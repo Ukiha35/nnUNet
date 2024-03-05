@@ -5,8 +5,7 @@ import torch
 
 
 def recursive_fix_for_json_export(my_dict: dict):
-    # json is ... a very nice thing to have
-    # 'cannot serialize object of type bool_/int64/float64'. Apart from that of course...
+    # json is stupid. 'cannot serialize object of type bool_/int64/float64'. Come on bro.
     keys = list(my_dict.keys())  # cannot iterate over keys() if we change keys....
     for k in keys:
         if isinstance(k, (np.int64, np.int32, np.int8, np.uint8)):
@@ -38,7 +37,7 @@ def recursive_fix_for_json_export(my_dict: dict):
 
 
 def fix_types_iterable(iterable, output_type):
-    # this sh!t is hacky as hell and will break if you use it for anything outside nnunet. Keep your hands off of this.
+    # this sh!t is hacky as hell and will break if you use it for anything outside nnunet. Keep you hands off of this.
     out = []
     for i in iterable:
         if type(i) in (np.int64, np.int32, np.int8, np.uint8):

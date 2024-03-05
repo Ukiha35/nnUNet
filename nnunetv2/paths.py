@@ -19,7 +19,7 @@ PLEASE READ paths.md FOR INFORMATION TO HOW TO SET THIS UP
 """
 
 nnUNet_raw = os.environ.get('nnUNet_raw')
-nnUNet_preprocessed = os.environ.get('nnUNet_preprocessed')
+nnUNet_preprocessed = os.environ.get('nnUNetv2_preprocessed')
 nnUNet_results = os.environ.get('nnUNet_results')
 
 if nnUNet_raw is None:

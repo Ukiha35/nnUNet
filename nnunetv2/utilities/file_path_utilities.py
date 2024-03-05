@@ -42,7 +42,7 @@ def parse_dataset_trainer_plans_configuration_from_path(path: str):
             split = folders[idx - 1].split('__')
             assert len(split) == 3, 'Bad path, cannot extract what I need. Your path needs to be at least ' \
                                         'DatasetXXX/MODULE__PLANS__CONFIGURATION for this to work'
-            return folders[idx - 2], *split
+            return folders[idx - 2], split[0], split[1], split[2]
     else:
         # we can only check for dataset followed by a string that is separable into three strings by splitting with '__'
         # look for DatasetXXX
@@ -54,7 +54,7 @@ def parse_dataset_trainer_plans_configuration_from_path(path: str):
             split = folders[idx + 1].split('__')
             assert len(split) == 3, 'Bad path, cannot extract what I need. Your path needs to be at least ' \
                                        'DatasetXXX/MODULE__PLANS__CONFIGURATION for this to work'
-            return folders[idx], *split
+            return folders[idx], split[0], split[1], split[2]
 
 
 def get_ensemble_name(model1_folder, model2_folder, folds: Tuple[int, ...]):
