@@ -12,7 +12,7 @@
 #    See the License for the specific language governing permissions and
 #    limitations under the License.
 
-
+from tqdm import tqdm
 import numpy as np
 from batchgenerators.augmentations.utils import pad_nd_image
 from nnunet.utilities.random_stuff import no_op
@@ -371,7 +371,7 @@ class SegmentationNetwork(NeuralNetwork):
             aggregated_results = np.zeros([self.num_classes] + list(data.shape[1:]), dtype=np.float32)
             aggregated_nb_of_predictions = np.zeros([self.num_classes] + list(data.shape[1:]), dtype=np.float32)
 
-        for x in steps[0]:
+        for x in tqdm(steps[0]):
             lb_x = x
             ub_x = x + patch_size[0]
             for y in steps[1]:

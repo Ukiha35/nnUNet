@@ -22,6 +22,7 @@ from batchgenerators.augmentations.utils import resize_segmentation
 from nnunet.inference.segmentation_export import save_segmentation_nifti_from_softmax, save_segmentation_nifti
 from batchgenerators.utilities.file_and_folder_operations import *
 import sys
+import time
 if 'win' in sys.platform:
     #fix for windows platform
     import pathos
@@ -38,6 +39,16 @@ from nnunet.training.model_restore import load_model_and_checkpoint_files
 from nnunet.training.network_training.nnUNetTrainer import nnUNetTrainer
 from nnunet.utilities.one_hot_encoding import to_one_hot
 
+# (165, 512, 512)
+def postprogess_WORD(seg):
+    # mask = (seg==15)|(seg==16)
+    # right = np.zeros(seg.shape)
+    # right[:, :, :(seg.shape[2]//2)] = 1
+    # left = np.ones(seg.shape) - right
+    # seg[np.array(mask * left, dtype=bool)] = 15
+    # seg[np.array(mask * right, dtype=bool)] = 16
+    
+    return seg
 
 def preprocess_save_to_queue(preprocess_fn, q, list_of_lists, output_files, segs_from_prev_stage, classes,
                              transpose_forward):
@@ -239,7 +250,8 @@ def predict_cases(model, list_of_lists, output_filenames, folds, save_npz, num_t
         if transpose_forward is not None:
             transpose_backward = trainer.plans.get('transpose_backward')
             softmax = softmax.transpose([0] + [i + 1 for i in transpose_backward])
-
+        print(f"transpose_forward: {transpose_forward}, transpose_backward: {transpose_backward}")
+        # print(softmax[:,43,259,126])#[17,165,512,512]
         if save_npz:
             npz_file = output_filename[:-7] + ".npz"
         else:
@@ -269,9 +281,14 @@ def predict_cases(model, list_of_lists, output_filenames, folds, save_npz, num_t
         #                                     None, None,
         #                                     npz_file, None, force_separate_z, interpolation_order_z)
 
+        if os.path.basename(list_of_lists[0][0])[0:4] in ['word','WORD']:
+            postprocess_fn = postprogess_WORD
+        else:
+            postprocess_fn = None
+            
         results.append(pool.starmap_async(save_segmentation_nifti_from_softmax,
                                           ((softmax, output_filename, dct, interpolation_order, region_class_order,
-                                            None, None,
+                                            postprocess_fn, (),
                                             npz_file, None, force_separate_z, interpolation_order_z),)
                                           ))
 

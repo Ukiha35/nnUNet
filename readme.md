@@ -473,7 +473,7 @@ We have collected solutions to common [questions](documentation/common_questions
 
 # Useful Resources
 
-* The **[nnU-Net Workshop](https://github.com/IML-DKFZ/nnunet-workshop)** is a step-by-step introduction to nnU-Net and visualizing
+* The **[nnU-Net Workshop](https://github.com/IML-DKFZ/nnunet-)** is a step-by-step introduction to nnU-Net and visualizing
 results using MITK. Regarding nnU-Net, it includes training and inference examples and an example to train on a new dataset.
 The workshop itself is a jupyter notebook, which can be executed in GoogleColab.
 

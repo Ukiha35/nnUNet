@@ -51,7 +51,7 @@ def prepare_submission():
     from cremi.io import CremiFile
     from cremi.Volume import Volume
 
-    base = "/home/fabian/drives/datasets/results/nnUNet/test_sets/Task061_CREMI/"
+    base = "/media/ps/passport2/ltc/nnUNetv1/nnUNet_outputs/CREMI/"
     # a+
     pred = sitk.GetArrayFromImage(sitk.ReadImage(join(base, 'results_3d_fullres', "sample_a+.nii.gz"))).astype(np.uint64)
     pred[pred == 0] = 0xffffffffffffffff
@@ -87,7 +87,7 @@ if __name__ == "__main__":
     maybe_mkdir_p(imagests)
     maybe_mkdir_p(labelstr)
 
-    base = "/media/fabian/My Book/datasets/CREMI"
+    base = "/media/ps/passport2/ltc/CREMI/"
 
     # train
     img, label = load_sample(join(base, "sample_A_20160501.hdf"))
@@ -144,3 +144,5 @@ if __name__ == "__main__":
               {'train': ["sample_a", "sample_b", "sample_c"], 'val': ["sample_a", "sample_b", "sample_c"]},
               {'train': ["sample_a", "sample_b", "sample_c"], 'val': ["sample_a", "sample_b", "sample_c"]}]
     save_pickle(splits, join(out_preprocessed, "splits_final.pkl"))
+    
+    # prepare_submission()

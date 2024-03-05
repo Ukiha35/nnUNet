@@ -45,6 +45,8 @@ setup(name='nnunet',
               'nnUNet_change_trainer_class = nnunet.inference.change_trainer:main',
               'nnUNet_evaluate_folder = nnunet.evaluation.evaluator:nnunet_evaluate_folder',
               'nnUNet_plot_task_pngs = nnunet.utilities.overlay_plots:entry_point_generate_overlay',
+              'nnUNet_WORDEvaluation = nnunet.evaluation.word_metrics_computing:main' ,
+              'nnUNet_patchSize_overlap_experiment = nnunet.patchSize_overlap_experiment:main'
           ],
       },
       keywords=['deep learning', 'image segmentation', 'medical image analysis',

@@ -14,6 +14,8 @@
 
 from collections import OrderedDict
 from copy import deepcopy
+from tqdm import tqdm
+import time
 
 from batchgenerators.augmentations.utils import resize_segmentation
 from nnunet.configuration import default_num_threads, RESAMPLING_SEPARATE_Z_ANISO_THRESHOLD
@@ -143,7 +145,7 @@ def resample_data_or_seg(data, new_shape, is_seg, axis=None, order=3, do_separat
                 new_shape_2d = new_shape[:-1]
 
             reshaped_final_data = []
-            for c in range(data.shape[0]):
+            for c in (range(data.shape[0])):
                 reshaped_data = []
                 for slice_id in range(shape[axis]):
                     if axis == 0:
@@ -315,7 +317,7 @@ class GenericPreprocessor(object):
 
         data = data.transpose((0, *[i + 1 for i in self.transpose_forward]))
         seg = seg.transpose((0, *[i + 1 for i in self.transpose_forward]))
-
+        # [165,512,512]
         data, seg, properties = self.resample_and_normalize(data, target_spacing, properties, seg,
                                                             force_separate_z=force_separate_z)
         return data.astype(np.float32), seg, properties
