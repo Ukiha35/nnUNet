@@ -87,8 +87,13 @@ def main():
     ori_plan_file = os.path.join(settings_dir,f"nnUNetTrainer__nnUNetPlans__{args.config}",f"plans_ori.json")
     plan_file = os.path.join(settings_dir,f"nnUNetTrainer__nnUNetPlans__{args.config}",f"plans.json")
     
-    with open(ori_plan_file, 'r') as f:
-        data = json.load(f)
+    try:
+        with open(ori_plan_file, 'r') as f:
+            data = json.load(f)
+    except:
+        shutil.copyfile(plan_file, ori_plan_file)
+        with open(ori_plan_file, 'r') as f:
+            data = json.load(f)
 
     if args.config == '2d':
         data['configurations']['2d']['spacing'] = [s*args.downsample[axis+1] for axis, s in enumerate(data['configurations']['2d']['spacing'])]
