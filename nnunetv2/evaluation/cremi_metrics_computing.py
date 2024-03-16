@@ -24,22 +24,20 @@ def main():
     parser.add_argument("--GT_dir", default="/media/ps/passport2/ltc/nnUNetv2/nnUNet_raw/Dataset061_CREMI",required=False)
     parser.add_argument("--Pred_dir_ori", default="/media/ps/passport2/ltc/nnUNetv2/nnUNet_outputs/CREMI",required=False)
     parser.add_argument('-p', '--pred_dir', help="pred_exp_name",default="Test", required=False)
-    parser.add_argument('--part',type=str, default='c')
     
     args = parser.parse_args()
-    assert args.part in ['a', 'b', 'c']
     
     Pred_dir = os.path.join(args.Pred_dir_ori,args.pred_dir)    
     
-    if not os.path.exists(join(args.GT_dir, "imagesTs", f"sample_{args.part}.hdf")):
-        out_a = CremiFile(join(args.GT_dir, "imagesTs", f"sample_{args.part}.hdf"), 'w')
+    if not os.path.exists(join(args.GT_dir, "imagesTs", f"sample_c.hdf")):
+        out_a = CremiFile(join(args.GT_dir, "imagesTs", f"sample_c.hdf"), 'w')
         
-        gt_image = sitk.GetArrayFromImage(sitk.ReadImage(join(args.GT_dir, "imagesTs", f"sample_{args.part}_0000.nii.gz"))).astype(np.uint64)
+        gt_image = sitk.GetArrayFromImage(sitk.ReadImage(join(args.GT_dir, "imagesTs", f"sample_c_0000.nii.gz"))).astype(np.uint64)
         gt_image[gt_image == 0] = 0xffffffffffffffff
         volume = Volume(gt_image, (40., 4., 4.))
         out_a.write_raw(volume)
         
-        gt_label = sitk.GetArrayFromImage(sitk.ReadImage(join(args.GT_dir, "labelsTs", f"sample_{args.part}.nii.gz"))).astype(np.uint64)
+        gt_label = sitk.GetArrayFromImage(sitk.ReadImage(join(args.GT_dir, "labelsTs", f"sample_c.nii.gz"))).astype(np.uint64)
         gt_label[gt_label == 0] = 0xffffffffffffffff
         clefts = Volume(gt_label, (40., 4., 4.))
         out_a.write_clefts(clefts)
@@ -47,7 +45,7 @@ def main():
         out_a.close()
     
     # if not os.path.exists(join(Pred_dir, "sample_c.hdf")):
-    pred = sitk.GetArrayFromImage(sitk.ReadImage(join(Pred_dir, f"sample_{args.part}.nii.gz"))).astype(np.uint64)
+    pred = sitk.GetArrayFromImage(sitk.ReadImage(join(Pred_dir, f"sample_c.nii.gz"))).astype(np.uint64)
     pred[pred == 0] = 0xffffffffffffffff
     out_a = CremiFile(join(Pred_dir, 'sample_c.hdf'), 'w')
     clefts = Volume(pred, (40., 4., 4.))
@@ -57,8 +55,8 @@ def main():
     
     
     
-    test = CremiFile(join(Pred_dir, f'sample_{args.part}.hdf'), 'r')
-    truth = CremiFile(join(args.GT_dir, "imagesTs", f'sample_{args.part}.hdf'), 'r')
+    test = CremiFile(join(Pred_dir, f'sample_c.hdf'), 'r')
+    truth = CremiFile(join(args.GT_dir, "imagesTs", f'sample_c.hdf'), 'r')
 
     clefts_evaluation = Clefts(test.read_clefts(), truth.read_clefts())
 
