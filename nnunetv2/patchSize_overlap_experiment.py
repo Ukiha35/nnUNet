@@ -52,11 +52,16 @@ def main():
     parser.add_argument("--chk", default="checkpoint_final.pth", required=False)
     parser.add_argument("--config", default="2d", required=False)
     parser.add_argument("--downsample", type=float, nargs='+', default=[1,1,1], required=False)
+    parser.add_argument("--part",type=str,default=None, required=False)
     args = parser.parse_args()
     
     assert args.datasetnum in dataset_dict
     if args.datasetnum == 61 and args.config == "2d":
         assert args.downsample == [1,1,1]
+    
+    if args.part is None:
+        dic = {0:'c',1:'a',2:'b'}
+        args.part = dic[args.fold]
     
     print(f"checkpoint: %s" % args.chk)
     print(f"fold: %s" % args.fold)
@@ -64,10 +69,10 @@ def main():
     print(f"step: %s" % args.step)
     print(f"downsample: %s" % args.downsample)
     
-    ori_input_dir = f"/media/ps/passport2/ltc/nnUNetv2/nnUNet_raw/Dataset{args.datasetnum:03d}_{dataset_dict[args.datasetnum]}/imagesTs"
+    ori_input_dir = f"/media/ps/passport2/ltc/nnUNetv2/nnUNet_raw/Dataset{args.datasetnum:03d}_{dataset_dict[args.datasetnum]}/imagesTs_{args.part}"
     
     if args.config == "2d":
-        input_dir = f"/media/ps/passport2/ltc/nnUNetv2/nnUNet_raw/Dataset{args.datasetnum:03d}_{dataset_dict[args.datasetnum]}/imagesTs_{args.downsample[0]}_{args.downsample[1]}_{args.downsample[2]}"
+        input_dir = f"/media/ps/passport2/ltc/nnUNetv2/nnUNet_raw/Dataset{args.datasetnum:03d}_{dataset_dict[args.datasetnum]}/imagesTs_{args.part}_{args.downsample[0]}_{args.downsample[1]}_{args.downsample[2]}"
         if not os.path.exists(input_dir):
             print("creating resampled input directory...")
             input_resample(ori_input_dir,input_dir,args.downsample)
@@ -128,7 +133,7 @@ def main():
     # os.remove(plan_file)
     
     # nnUNet_WORDEvaluation 命令
-    command_evaluation = f"nnUNetv2_{dataset_dict[args.datasetnum]}Evaluation -p {output_folder}"
+    command_evaluation = f"nnUNetv2_{dataset_dict[args.datasetnum]}Evaluation --part {args.part} -p {output_folder}"
         
     os.system(command_evaluation)
 
