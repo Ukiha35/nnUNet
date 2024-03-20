@@ -289,7 +289,7 @@ def download_and_install_from_url(url):
     tempfile = join(home, '.nnunetdownload_%s.zip' % str(random_number))
 
     try:
-        os.system(f"wget {url} -O {tempfile}")
+        os.system(f"wget {url} -O {tempfile} --no-check-certificate")
         # download_file(url=url, local_filename=tempfile, chunk_size=8192 * 16)
         print("Download finished. Extracting...")
         install_model_from_zip_file(tempfile)
