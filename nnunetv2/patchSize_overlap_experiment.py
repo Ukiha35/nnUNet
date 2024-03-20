@@ -6,7 +6,7 @@ import json
 import SimpleITK as sitk
 from tqdm import tqdm
 
-dataset_dict = {61:'CREMI',100:'WORD'}
+dataset_dict = {61:'CREMI',62:'CREMI',100:'WORD'}
 
 
 def input_resample(folder_path, output_folder_path,downsample):
@@ -55,7 +55,7 @@ def main():
     args = parser.parse_args()
     
     assert args.datasetnum in dataset_dict
-    if args.datasetnum == 61 and args.config == "2d":
+    if args.datasetnum in [61,62] and args.config == "2d":
         assert args.downsample == [1,1,1]
     
     
@@ -132,6 +132,8 @@ def main():
     os.system(command_predict)
 
     # os.remove(plan_file)
+    
+    print('evaluating...')
     
     # nnUNet_WORDEvaluation 命令
     command_evaluation = f"nnUNetv2_{dataset_dict[args.datasetnum]}Evaluation -p {output_folder}"

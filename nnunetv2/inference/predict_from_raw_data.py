@@ -44,7 +44,8 @@ class nnUNetPredictor(object):
                  device: torch.device = torch.device('cuda'),
                  verbose: bool = False,
                  verbose_preprocessing: bool = False,
-                 allow_tqdm: bool = True):
+                 allow_tqdm: bool = True,
+                 time_output_dir = None):
         self.verbose = verbose
         self.verbose_preprocessing = verbose_preprocessing
         self.allow_tqdm = allow_tqdm
@@ -55,6 +56,7 @@ class nnUNetPredictor(object):
         self.tile_step_size = tile_step_size
         self.use_gaussian = use_gaussian
         self.use_mirroring = use_mirroring
+        self.time_output_dir = time_output_dir
         if device.type == 'cuda':
             # device = torch.device(type='cuda', index=0)  # set the desired GPU with CUDA_VISIBLE_DEVICES!
             # why would I ever want to do that. Stupid dobby. This kills DDP inference...
@@ -682,7 +684,11 @@ class nnUNetPredictor(object):
                     workon = data[sl][None]
                     workon = workon.to(self.device, non_blocking=False)
 
+                    st = time.time()
                     prediction = self._internal_maybe_mirror_and_predict(workon)[0].to(results_device)
+                    end = time.time()
+                    if self.time_output_dir is not None:
+                        save_json(end - st, join(self.time_output_dir, 'prediction_time.txt'))
 
                     predicted_logits[sl] += (prediction * gaussian if self.use_gaussian else prediction)
                     n_predictions[sl[1:]] += (gaussian if self.use_gaussian else 1)
@@ -881,7 +887,8 @@ def predict_entry_point():
                                 perform_everything_on_gpu=True,
                                 device=device,
                                 verbose=args.verbose,
-                                verbose_preprocessing=False)
+                                verbose_preprocessing=False,
+                                time_output_dir = args.o)
     predictor.initialize_from_trained_model_folder(
         model_folder,
         args.f,

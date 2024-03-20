@@ -38,7 +38,7 @@ def evaluate_one(Pred_dir,GT_dir,file_name):
     # if not os.path.exists(join(Pred_dir, f"{file_name}.hdf")):
     pred = sitk.GetArrayFromImage(sitk.ReadImage(join(Pred_dir, f"{file_name}.nii.gz"))).astype(np.uint64)
     pred[pred == 0] = 0xffffffffffffffff
-    out_a = CremiFile(join(Pred_dir, '{file_name}.hdf'), 'w')
+    out_a = CremiFile(join(Pred_dir, f'{file_name}.hdf'), 'w')
     clefts = Volume(pred, (40., 4., 4.))
     out_a.write_clefts(clefts)
     out_a.close()
@@ -70,15 +70,17 @@ def evaluate_one(Pred_dir,GT_dir,file_name):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--GT_dir", default="/media/ps/passport2/ltc/nnUNetv2/nnUNet_raw/Dataset061_CREMI",required=False)
+    parser.add_argument("--GT_dir", default="/media/ps/passport2/ltc/nnUNetv2/nnUNet_raw/Dataset062_CREMI",required=False)
     parser.add_argument("--Pred_dir_ori", default="/media/ps/passport2/ltc/nnUNetv2/nnUNet_outputs/CREMI",required=False)
     parser.add_argument('-p', '--pred_dir', help="pred_exp_name",default="Test", required=False)
     parser.add_argument('--mode',type=str,default='abc')
     
     args = parser.parse_args()
     assert args.mode in ['abc', 'ab']
-    Pred_dir = os.path.join(args.Pred_dir_ori,args.pred_dir)    
     
+    args.pred_dir = '/media/ps/passport2/ltc/nnUNetv2/nnUNet_outputs/CREMI/3d_fullres/fold0/patch24_256_256_step0.5_chkfinal_down1.0_1.0_1.0/'
+    
+    Pred_dir = os.path.join(args.Pred_dir_ori,args.pred_dir)    
     result_dict = {"name": args.pred_dir}
     
     if args.mode == 'ab':
@@ -88,7 +90,7 @@ def main():
     
     for name in names:
         false_positive_count, false_negative_count, false_positive_stats, false_negative_stats = evaluate_one(Pred_dir,args.GT_dir,name)
-        result_dict['name'] = {
+        result_dict[name] = {
             "false positives": false_positive_count,
             "false negatives": false_negative_count,
             "distance to ground truth": false_positive_stats,
@@ -100,6 +102,7 @@ def main():
     # print("\tdice: " + str(dice))
     
     result_dict['average cremi score'] = np.array([result_dict[name]['cremi score'] for name in names]).mean()
+    print(f"average cremi score: {result_dict['average cremi score']}")
     
     with open(os.path.join(Pred_dir,"predictionsTs_CREMIScore")+'.json', 'w') as json_file:
         json.dump(result_dict, json_file, indent=4)
