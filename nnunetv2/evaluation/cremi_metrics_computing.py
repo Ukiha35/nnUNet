@@ -55,7 +55,7 @@ def evaluate_one(Pred_dir,GT_dir,file_name):
     if os.path.exists(join(Pred_dir, f"{file_name}.npz")):
         pred_prob = np.load(join(Pred_dir, f"{file_name}.npz"))['probabilities'][1]
     else:
-        pred_prob = None
+        pred_prob = np.array([])
     # dice = metric.binary.dc(test_array, truth_array)
 
     false_positive_count = clefts_evaluation.count_false_positives()
@@ -108,9 +108,12 @@ def main():
         test_total = np.concatenate((test_total,test_array.flatten()))
         truth_total = np.concatenate((truth_total,truth_array.flatten()))
         pred_prob_total = np.concatenate((pred_prob_total,pred_prob.flatten()))
-        
-    fpr, tpr, thr = metrics.roc_curve(truth_total.flatten(), pred_prob_total.flatten())
-    auc = metrics.auc(fpr,tpr)
+    
+    if len(pred_prob_total.flatten()) > 0:
+        fpr, tpr, thr = metrics.roc_curve(truth_total.flatten(), pred_prob_total.flatten())
+        auc = metrics.auc(fpr,tpr)
+    else:
+        auc = -1
         
     result_dict['average cremi score'] = np.array([result_dict[name]['cremi score'] for name in names]).mean()
     result_dict['f1 score'] = metrics.f1_score(truth_total, test_total)
