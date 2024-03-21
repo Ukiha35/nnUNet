@@ -87,11 +87,11 @@ def main():
     
     args = parser.parse_args()
     assert args.mode in ['abc', 'ab']
-    
+    args.pred_dir = "/media/ps/passport2/ltc/nnUNetv2/nnUNet_outputs/CREMI/3d_fullres/fold1/patch24_128_128_step0.25_chkfinal_down1.0_1.0_1.0/"
     Pred_dir = os.path.join(args.Pred_dir_ori,args.pred_dir)    
     result_dict = {"name": args.pred_dir}
-    test_total = np.array([])
-    truth_total = np.array([])
+    test_total = np.array([],dtype=bool)
+    truth_total = np.array([],dtype=bool)
     
     if args.mode == 'ab':
         names = ['sample_c']
@@ -108,8 +108,8 @@ def main():
             "cremi score": (false_positive_stats['mean']+false_negative_stats['mean'])/2,
             "AUC": auc if auc is not None else -1
         }
-        test_total = np.concatenate(test_total,test_array.flatten())
-        truth_total = np.concatenate(truth_total,truth_array.flatten())
+        test_total = np.concatenate((test_total,test_array.flatten()))
+        truth_total = np.concatenate((truth_total,truth_array.flatten()))
         
     result_dict['average cremi score'] = np.array([result_dict[name]['cremi score'] for name in names]).mean()
     result_dict['f1 score'] = metrics.f1_score(truth_total, test_total)
