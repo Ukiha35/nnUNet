@@ -14,6 +14,7 @@ import json
 from cremi.io import CremiFile
 from cremi.Volume import Volume
 from medpy import metric
+import sklearn
 try:
     import h5py
 except ImportError:
@@ -48,8 +49,16 @@ def evaluate_one(Pred_dir,GT_dir,file_name):
 
     clefts_evaluation = Clefts(test.read_clefts(), truth.read_clefts())
 
-    # test_array = np.array(test.read_clefts().data,dtype=np.uint8)
-    # truth_array = np.array(truth.read_clefts().data,dtype=np.uint8)
+    test_array = np.array(test.read_clefts().data,dtype=np.uint8)
+    truth_array = np.array(truth.read_clefts().data,dtype=np.uint8)
+    f1_score = sklearn.metrics.f1_score(truth_array, test_array)
+    
+    if os.path.exists(join(Pred_dir, f"{file_name}.npz")):
+        pred_prob = np.load(join(Pred_dir, f"{file_name}.npz"))['probabilities'][1]
+        fpr, tpr, thr = sklearn.metrics.roc_curve(truth_array, pred_prob)
+        auc = sklearn.metrics.auc(fpr,tpr)
+    else:
+        auc = None
     # dice = metric.binary.dc(test_array, truth_array)
 
     false_positive_count = clefts_evaluation.count_false_positives()
@@ -66,7 +75,10 @@ def evaluate_one(Pred_dir,GT_dir,file_name):
 
     print ("\tdistance to ground truth: " + str(false_positive_stats))
     print ("\tdistance to proposal    : " + str(false_negative_stats))
-    return false_positive_count,false_negative_count,false_positive_stats,false_negative_stats
+    print(f"f1 score: {f1_score}")
+    print(f"AUC: {auc}")
+    
+    return false_positive_count,false_negative_count,false_positive_stats,false_negative_stats,f1_score,auc
 
 def main():
     parser = argparse.ArgumentParser()
@@ -87,20 +99,26 @@ def main():
         names = ['sample_a_test','sample_b_test','sample_c_test']
     
     for name in names:
-        false_positive_count, false_negative_count, false_positive_stats, false_negative_stats = evaluate_one(Pred_dir,args.GT_dir,name)
+        false_positive_count, false_negative_count, false_positive_stats, false_negative_stats, f1_score, auc = evaluate_one(Pred_dir,args.GT_dir,name)
         result_dict[name] = {
             "false positives": false_positive_count,
             "false negatives": false_negative_count,
             "distance to ground truth": false_positive_stats,
             "distance to proposal": false_negative_stats,
             "cremi score": (false_positive_stats['mean']+false_negative_stats['mean'])/2,
+            "f1 score": f1_score,
+            "AUC": auc if auc is not None else -1
         }
         
         
     # print("\tdice: " + str(dice))
     
     result_dict['average cremi score'] = np.array([result_dict[name]['cremi score'] for name in names]).mean()
+    result_dict['average f1 score'] = np.array([result_dict[name]['f1 score'] for name in names]).mean()
+    result_dict['average AUC'] = np.array([result_dict[name]['AUC'] for name in names]).mean()
     print(f"average cremi score: {result_dict['average cremi score']}")
+    print(f"average f1 score: {result_dict['average f1 score']}")
+    print(f"average AUC: {result_dict['average AUC']}")
     
     with open(os.path.join(Pred_dir,"predictionsTs_CREMIScore")+'.json', 'w') as json_file:
         json.dump(result_dict, json_file, indent=4)
