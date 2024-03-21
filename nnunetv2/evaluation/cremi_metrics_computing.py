@@ -77,9 +77,7 @@ def main():
     
     args = parser.parse_args()
     assert args.mode in ['abc', 'ab']
-    
-    args.pred_dir = '/media/ps/passport2/ltc/nnUNetv2/nnUNet_outputs/CREMI/3d_fullres/fold0/patch24_256_256_step0.5_chkfinal_down1.0_1.0_1.0/'
-    
+        
     Pred_dir = os.path.join(args.Pred_dir_ori,args.pred_dir)    
     result_dict = {"name": args.pred_dir}
     
