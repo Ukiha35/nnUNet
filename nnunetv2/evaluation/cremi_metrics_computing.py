@@ -54,10 +54,8 @@ def evaluate_one(Pred_dir,GT_dir,file_name):
     
     if os.path.exists(join(Pred_dir, f"{file_name}.npz")):
         pred_prob = np.load(join(Pred_dir, f"{file_name}.npz"))['probabilities'][1]
-        fpr, tpr, thr = metrics.roc_curve(truth_array.flatten(), pred_prob.flatten())
-        auc = metrics.auc(fpr,tpr)
     else:
-        auc = None
+        pred_prob = None
     # dice = metric.binary.dc(test_array, truth_array)
 
     false_positive_count = clefts_evaluation.count_false_positives()
@@ -74,9 +72,8 @@ def evaluate_one(Pred_dir,GT_dir,file_name):
 
     print ("\tdistance to ground truth: " + str(false_positive_stats))
     print ("\tdistance to proposal    : " + str(false_negative_stats))
-    print(f"AUC: {auc}")
     
-    return false_positive_count,false_negative_count,false_positive_stats,false_negative_stats,auc,test_array,truth_array
+    return false_positive_count,false_negative_count,false_positive_stats,false_negative_stats,test_array,truth_array,pred_prob
 
 def main():
     parser = argparse.ArgumentParser()
@@ -92,6 +89,7 @@ def main():
     result_dict = {"name": args.pred_dir}
     test_total = np.array([],dtype=bool)
     truth_total = np.array([],dtype=bool)
+    pred_prob_total = np.array([],dtype=bool)
     
     if args.mode == 'ab':
         names = ['sample_c']
@@ -99,24 +97,27 @@ def main():
         names = ['sample_a_test','sample_b_test','sample_c_test']
     
     for name in names:
-        false_positive_count, false_negative_count, false_positive_stats, false_negative_stats, auc, test_array, truth_array = evaluate_one(Pred_dir,args.GT_dir,name)
+        false_positive_count, false_negative_count, false_positive_stats, false_negative_stats, test_array, truth_array, pred_prob = evaluate_one(Pred_dir,args.GT_dir,name)
         result_dict[name] = {
             "false positives": false_positive_count,
             "false negatives": false_negative_count,
             "distance to ground truth": false_positive_stats,
             "distance to proposal": false_negative_stats,
             "cremi score": (false_positive_stats['mean']+false_negative_stats['mean'])/2,
-            "AUC": auc if auc is not None else -1
         }
         test_total = np.concatenate((test_total,test_array.flatten()))
         truth_total = np.concatenate((truth_total,truth_array.flatten()))
+        pred_prob_total = np.concatenate((pred_prob_total,pred_prob.flatten()))
+        
+    fpr, tpr, thr = metrics.roc_curve(truth_total.flatten(), pred_prob_total.flatten())
+    auc = metrics.auc(fpr,tpr)
         
     result_dict['average cremi score'] = np.array([result_dict[name]['cremi score'] for name in names]).mean()
     result_dict['f1 score'] = metrics.f1_score(truth_total, test_total)
-    result_dict['average AUC'] = np.array([result_dict[name]['AUC'] for name in names]).mean()
+    result_dict['AUC'] = auc
     print(f"average cremi score: {result_dict['average cremi score']}")
     print(f"f1 score: {result_dict['f1 score']}")
-    print(f"average AUC: {result_dict['average AUC']}")
+    print(f"AUC: {result_dict['AUC']}")
     
     with open(os.path.join(Pred_dir,"predictionsTs_CREMIScore")+'.json', 'w') as json_file:
         json.dump(result_dict, json_file, indent=4)
