@@ -44,8 +44,7 @@ class nnUNetPredictor(object):
                  device: torch.device = torch.device('cuda'),
                  verbose: bool = False,
                  verbose_preprocessing: bool = False,
-                 allow_tqdm: bool = True,
-                 time_output_dir = None):
+                 allow_tqdm: bool = True):
         self.verbose = verbose
         self.verbose_preprocessing = verbose_preprocessing
         self.allow_tqdm = allow_tqdm
@@ -56,7 +55,6 @@ class nnUNetPredictor(object):
         self.tile_step_size = tile_step_size
         self.use_gaussian = use_gaussian
         self.use_mirroring = use_mirroring
-        self.time_output_dir = time_output_dir
         if device.type == 'cuda':
             # device = torch.device(type='cuda', index=0)  # set the desired GPU with CUDA_VISIBLE_DEVICES!
             # why would I ever want to do that. Stupid dobby. This kills DDP inference...
@@ -293,7 +291,7 @@ class nnUNetPredictor(object):
                                                 folder_with_segs_from_prev_stage, overwrite, part_id, num_parts,
                                                 save_probabilities)
         if len(list_of_lists_or_source_folder) == 0:
-            return
+            return 0, None
 
         data_iterator = self._internal_get_data_iterator_from_lists_of_filenames(list_of_lists_or_source_folder,
                                                                                  seg_from_prev_stage_files,
@@ -393,6 +391,7 @@ class nnUNetPredictor(object):
         with multiprocessing.get_context("spawn").Pool(num_processes_segmentation_export) as export_pool:
             worker_list = [i for i in export_pool._pool]
             r = []
+            total_predict_time = 0
             for preprocessed in data_iterator:
                 data = preprocessed['data']
                 if isinstance(data, str):
@@ -418,8 +417,9 @@ class nnUNetPredictor(object):
                     sleep(0.1)
                     proceed = not check_workers_alive_and_busy(export_pool, worker_list, r, allowed_num_queued=2)
 
-                prediction = self.predict_logits_from_preprocessed_data(data).cpu()
-
+                predict_time, prediction = self.predict_logits_from_preprocessed_data(data)
+                prediction.cpu()
+                total_predict_time += predict_time
                 if ofile is not None:
                     # this needs to go into background processes
                     # export_prediction_from_logits(prediction, properties, configuration_manager, plans_manager,
@@ -460,7 +460,7 @@ class nnUNetPredictor(object):
         compute_gaussian.cache_clear()
         # clear device cache
         empty_cache(self.device)
-        return ret
+        return total_predict_time, ret
 
     def predict_single_npy_array(self, input_image: np.ndarray, image_properties: dict,
                                  segmentation_previous_stage: np.ndarray = None,
@@ -479,7 +479,7 @@ class nnUNetPredictor(object):
 
         if self.verbose:
             print('predicting')
-        predicted_logits = self.predict_logits_from_preprocessed_data(dct['data']).cpu()
+        predict_time, predicted_logits = self.predict_logits_from_preprocessed_data(dct['data']).cpu()
 
         if self.verbose:
             print('resampling to original shape')
@@ -512,6 +512,7 @@ class nnUNetPredictor(object):
         # things a lot faster for some datasets.
         original_perform_everything_on_gpu = self.perform_everything_on_gpu
         with torch.no_grad():
+            predict_time = 0
             prediction = None
             if self.perform_everything_on_gpu:
                 try:
@@ -524,9 +525,11 @@ class nnUNetPredictor(object):
                             self.network._orig_mod.load_state_dict(params)
 
                         if prediction is None:
-                            prediction = self.predict_sliding_window_return_logits(data)
+                            predict_time, prediction = self.predict_sliding_window_return_logits(data)
                         else:
-                            prediction += self.predict_sliding_window_return_logits(data)
+                            single_predict_time, single_prediction = self.predict_sliding_window_return_logits(data)
+                            prediction += single_prediction
+                            predict_time += single_predict_time
 
                     if len(self.list_of_parameters) > 1:
                         prediction /= len(self.list_of_parameters)
@@ -548,16 +551,19 @@ class nnUNetPredictor(object):
                         self.network._orig_mod.load_state_dict(params)
 
                     if prediction is None:
-                        prediction = self.predict_sliding_window_return_logits(data)
+                        predict_time, prediction = self.predict_sliding_window_return_logits(data)
                     else:
-                        prediction += self.predict_sliding_window_return_logits(data)
+                        single_predict_time, single_prediction = self.predict_sliding_window_return_logits(data)
+                        prediction += single_prediction
+                        predict_time += single_predict_time
+                        
                 if len(self.list_of_parameters) > 1:
                     prediction /= len(self.list_of_parameters)
 
             print('Prediction done, transferring to CPU if needed')
             prediction = prediction.to('cpu')
             self.perform_everything_on_gpu = original_perform_everything_on_gpu
-        return prediction
+        return predict_time, prediction
 
     def _internal_get_sliding_window_slicers(self, image_size: Tuple[int, ...]):
         slicers = []
@@ -680,6 +686,7 @@ class nnUNetPredictor(object):
                     empty_cache(self.device)
 
                 if self.verbose: print('running prediction')
+                predict_time = 0
                 for sl in tqdm(slicers, disable=not self.allow_tqdm):
                     workon = data[sl][None]
                     workon = workon.to(self.device, non_blocking=False)
@@ -687,15 +694,14 @@ class nnUNetPredictor(object):
                     st = time.time()
                     prediction = self._internal_maybe_mirror_and_predict(workon)[0].to(results_device)
                     end = time.time()
-                    if self.time_output_dir is not None:
-                        save_json(end - st, join(self.time_output_dir, 'prediction_time.txt'))
-
+                    predict_time += (end - st)
+                    
                     predicted_logits[sl] += (prediction * gaussian if self.use_gaussian else prediction)
                     n_predictions[sl[1:]] += (gaussian if self.use_gaussian else 1)
 
                 predicted_logits /= n_predictions
         empty_cache(self.device)
-        return predicted_logits[tuple([slice(None), *slicer_revert_padding[1:]])]
+        return predict_time, predicted_logits[tuple([slice(None), *slicer_revert_padding[1:]])]
 
 
 def predict_entry_point_modelfolder():
@@ -779,7 +785,7 @@ def predict_entry_point_modelfolder():
                                 device=device,
                                 verbose=args.verbose)
     predictor.initialize_from_trained_model_folder(args.m, args.f, args.chk)
-    predictor.predict_from_files(args.i, args.o, save_probabilities=args.save_probabilities,
+    predict_time, _ = predictor.predict_from_files(args.i, args.o, save_probabilities=args.save_probabilities,
                                  overwrite=not args.continue_prediction,
                                  num_processes_preprocessing=args.npp,
                                  num_processes_segmentation_export=args.nps,
@@ -887,24 +893,21 @@ def predict_entry_point():
                                 perform_everything_on_gpu=True,
                                 device=device,
                                 verbose=args.verbose,
-                                verbose_preprocessing=False,
-                                time_output_dir = args.o)
+                                verbose_preprocessing=False)
     predictor.initialize_from_trained_model_folder(
         model_folder,
         args.f,
         checkpoint_name=args.chk
     )
-    st = time.time()
-    predictor.predict_from_files(args.i, args.o, save_probabilities=args.save_probabilities,
+    predict_time, _ = predictor.predict_from_files(args.i, args.o, save_probabilities=args.save_probabilities,
                                  overwrite=not args.continue_prediction,
                                  num_processes_preprocessing=args.npp,
                                  num_processes_segmentation_export=args.nps,
                                  folder_with_segs_from_prev_stage=args.prev_stage_predictions,
                                  num_parts=args.num_parts,
                                  part_id=args.part_id)
-    end = time.time()
     
-    save_json(end - st, join(args.o, 'prediction_time.txt'))
+    save_json(predict_time, join(args.o, 'prediction_time.txt'))
         
     
     # r = predict_from_raw_data(args.i,
@@ -945,19 +948,14 @@ if __name__ == '__dmain__':
         use_folds=(0, ),
         checkpoint_name='checkpoint_final.pth',
     )
-    # predictor.predict_from_files(join(nnUNet_raw, 'Dataset100_WORD/imagesTs'),
-    #                              "/media/ps/passport2/ltc/nnUNetv2/nnUNet_outputs/Test/",
-    #                              save_probabilities=False, overwrite=False,
-    #                              num_processes_preprocessing=2, num_processes_segmentation_export=2,
-    #                              folder_with_segs_from_prev_stage=None, num_parts=1, part_id=0)
-
+    
     # predict a numpy array
     from nnunetv2.imageio.simpleitk_reader_writer import SimpleITKIO
     img, props = SimpleITKIO().read_images(["/media/ps/passport2/ltc/nnUNetv2/nnUNet_raw/Dataset061_CREMI/imagesTs/sample_c_0000.nii.gz"])
     ret = predictor.predict_single_npy_array(img, props, None, None, False)
 
     iterator = predictor.get_data_iterator_from_raw_npy_data([img], None, [props], None, 1)
-    ret = predictor.predict_from_data_iterator(iterator, False, 1)
+    predict_time, ret = predictor.predict_from_data_iterator(iterator, False, 1)
 
 
     # predictor = nnUNetPredictor(
