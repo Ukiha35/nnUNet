@@ -137,13 +137,13 @@ def main():
     os.system(command_predict)
 
     # os.remove(plan_file)
-    
-    print('evaluating...')
-    
-    # nnUNet_WORDEvaluation 命令
-    command_evaluation = f"nnUNetv2_{dataset_dict[args.datasetnum]}Evaluation -p {output_folder}"
+    if args.mode != 'test_fafb':
+        print('evaluating...')
         
-    os.system(command_evaluation)
+        # nnUNet_WORDEvaluation 命令
+        command_evaluation = f"nnUNetv2_{dataset_dict[args.datasetnum]}Evaluation -p {output_folder}"
+            
+        os.system(command_evaluation)
 
 if __name__ == "__main__":
     main()
