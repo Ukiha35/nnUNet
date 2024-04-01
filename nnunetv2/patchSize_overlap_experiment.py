@@ -52,6 +52,7 @@ def main():
     parser.add_argument("--chk", default="checkpoint_final.pth", required=False)
     parser.add_argument("--config", default="2d", required=False)
     parser.add_argument("--downsample", type=float, nargs='+', default=[1,1,1], required=False)
+    parser.add_argument("--mode", type=str, default='normal', help='normal,test_fafb')
     args = parser.parse_args()
     
     assert args.datasetnum in dataset_dict
@@ -77,10 +78,14 @@ def main():
     else:
         input_dir = ori_input_dir
 
+    output_dir = f"/media/ps/passport2/ltc/nnUNetv2/nnUNet_outputs/{dataset_dict[args.datasetnum]}"
+
+    if args.mode == 'test_fafb':
+        input_dir = f"/media/ps/passport2/ltc/nnUNetv2/nnUNet_raw/Dataset{args.datasetnum:03d}_{dataset_dict[args.datasetnum]}/imagesTs_fafb"
+        output_dir = f"/media/ps/passport2/ltc/nnUNetv2/nnUNet_outputs/{dataset_dict[args.datasetnum]}_fafb"
+        
     print("creating settings...")
     
-    output_dir = f"/media/ps/passport2/ltc/nnUNetv2/nnUNet_outputs/{dataset_dict[args.datasetnum]}"
-       
     # 生成settings
     settings_dir = f"/media/ps/passport2/ltc/nnUNetv2/nnUNet_results/Dataset{args.datasetnum:03d}_{dataset_dict[args.datasetnum]}"
     
