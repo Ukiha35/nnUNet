@@ -82,7 +82,7 @@ def main():
 
     if args.mode == 'test_fafb':
         input_dir = f"/media/ps/passport2/ltc/nnUNetv2/nnUNet_raw/Dataset{args.datasetnum:03d}_{dataset_dict[args.datasetnum]}/imagesTs_fafb"
-        output_dir = f"/media/ps/passport2/ltc/nnUNetv2/nnUNet_outputs/{dataset_dict[args.datasetnum]}_fafb"
+        output_dir = f"/media/ps/passport2/ltc/nnUNetv2/nnUNet_outputs/fafb_{dataset_dict[args.datasetnum]}"
         
     print("creating settings...")
     
@@ -132,8 +132,12 @@ def main():
         prev_output = '-prev_stage_predictions '+os.path.join(settings_dir,f'nnUNetTrainer__nnUNetPlans__3d_cascade_fullres/fold_{args.fold}/validation/')
     else:
         prev_output = ''
+    if args.mode == "test_fafb":
+        save_prob = ''
+    else:
+        save_prob = '--save_probabilities'
     
-    command_predict = f"CUDA_VISIBLE_DEVICES={args.cuda_num}  nnUNetv2_predict --save_probabilities {prev_output} {overwrite} -chk {args.chk} --continue_prediction -i {input_dir} -o {os.path.join(output_dir,output_folder)} -d {args.datasetnum} -c {args.config} -f {args.fold} -step_size {args.step}"
+    command_predict = f"CUDA_VISIBLE_DEVICES={args.cuda_num}  nnUNetv2_predict {save_prob} {prev_output} {overwrite} -chk {args.chk} --continue_prediction -i {input_dir} -o {os.path.join(output_dir,output_folder)} -d {args.datasetnum} -c {args.config} -f {args.fold} -step_size {args.step}"
     os.system(command_predict)
 
     # os.remove(plan_file)
