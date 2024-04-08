@@ -132,7 +132,7 @@ def main():
         prev_output = '-prev_stage_predictions '+os.path.join(settings_dir,f'nnUNetTrainer__nnUNetPlans__3d_cascade_fullres/fold_{args.fold}/validation/')
     else:
         prev_output = ''
-    if args.mode == "test_fafb":
+    if args.mode == "test_fafb" and args.config != '3d_lowres':
         save_prob = ''
     else:
         save_prob = '--save_probabilities'

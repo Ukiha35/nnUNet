@@ -1159,10 +1159,10 @@ class nnUNetTrainer(object):
                 output_filename_truncated = join(validation_output_folder, k)
 
                 try:
-                    prediction = predictor.predict_sliding_window_return_logits(data)
+                    prediction = predictor.predict_sliding_window_return_logits(data)[-1]
                 except RuntimeError:
                     predictor.perform_everything_on_gpu = False
-                    prediction = predictor.predict_sliding_window_return_logits(data)
+                    prediction = predictor.predict_sliding_window_return_logits(data)[-1]
                     predictor.perform_everything_on_gpu = True
 
                 prediction = prediction.cpu()
