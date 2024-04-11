@@ -75,29 +75,21 @@ def evaluate_one(Pred_dir,GT_dir,file_name):
     
     return false_positive_count,false_negative_count,false_positive_stats,false_negative_stats,test_array,truth_array,pred_prob
 
-def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--GT_dir", default="/media/ps/passport2/ltc/nnUNetv2/nnUNet_raw/Dataset062_CREMI",required=False)
-    parser.add_argument("--Pred_dir_ori", default="/media/ps/passport2/ltc/nnUNetv2/nnUNet_outputs/CREMI",required=False)
-    parser.add_argument('-p', '--pred_dir', help="pred_exp_name",default="Test", required=False)
-    parser.add_argument('--mode',type=str,default='abc')
-    
-    args = parser.parse_args()
-    assert args.mode in ['abc', 'ab']
-
-    Pred_dir = os.path.join(args.Pred_dir_ori,args.pred_dir)    
-    result_dict = {"name": args.pred_dir}
+def evaluation(pred_dir,mode):
+    result_dict = {"name": pred_dir}
     test_total = np.array([],dtype=bool)
     truth_total = np.array([],dtype=bool)
     pred_prob_total = np.array([],dtype=bool)
     
-    if args.mode == 'ab':
+    if mode == 'ab':
         names = ['sample_c']
+        GT_dir="/media/ps/passport2/ltc/nnUNetv2/nnUNet_raw/Dataset061_CREMI"
     else:
         names = ['sample_a_test','sample_b_test','sample_c_test']
+        GT_dir="/media/ps/passport2/ltc/nnUNetv2/nnUNet_raw/Dataset062_CREMI"
     
     for name in names:
-        false_positive_count, false_negative_count, false_positive_stats, false_negative_stats, test_array, truth_array, pred_prob = evaluate_one(Pred_dir,args.GT_dir,name)
+        false_positive_count, false_negative_count, false_positive_stats, false_negative_stats, test_array, truth_array, pred_prob = evaluate_one(pred_dir,GT_dir,name)
         result_dict[name] = {
             "false positives": false_positive_count,
             "false negatives": false_negative_count,
@@ -122,8 +114,21 @@ def main():
     print(f"f1 score: {result_dict['f1 score']}")
     print(f"AUC: {result_dict['AUC']}")
     
-    with open(os.path.join(Pred_dir,"predictionsTs_CREMIScore")+'.json', 'w') as json_file:
+    with open(os.path.join(pred_dir,"predictionsTs_CREMIScore")+'.json', 'w') as json_file:
         json.dump(result_dict, json_file, indent=4)
+    return result_dict
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-p', '--pred_dir', help="pred_exp_name",default="Test", required=False)
+    parser.add_argument('--mode',type=str,default='abc')
+    
+    args = parser.parse_args()
+    assert args.mode in ['abc', 'ab']
+
+    evaluation(pred_dir=args.pred_dir,mode=args.mode)
+    
+    
         
 if __name__ == '__main__':
     main()
