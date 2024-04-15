@@ -541,14 +541,12 @@ class_list = ['Liver','Spleen','Kidney(L)','Kidney(R)','Stomach','Gallbladder','
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--GT_dir", default="/media/ps/passport2/ltc/nnUNetv2/nnUNet_raw/Dataset100_WORD/labelsTs",required=False)
-    parser.add_argument("--Pred_dir_ori", default="/media/ps/passport2/ltc/nnUNetv2/nnUNet_outputs/WORD",required=False)
     parser.add_argument('-p', '--pred_dir', help="pred_exp_name",
                         default="Test", required=False)
+    parser.add_argument('--mode',type=str,default='word')
     
     args = parser.parse_args()
-    
-    Pred_dir = os.path.join(args.Pred_dir_ori,args.pred_dir)
-        
+            
     result_dict = {
         "name": args.pred_dir,
         "mean": {},
@@ -558,7 +556,7 @@ def main():
     }
     
     
-    if not os.path.exists(os.path.join(Pred_dir,cal_filename)+'.npy'):
+    if not os.path.exists(os.path.join(args.pred_dir,cal_filename)+'.npy'):
       all_results = np.zeros((30,16,3))
       for ind, case in (enumerate(sorted(os.listdir(args.GT_dir)))):
       
@@ -567,7 +565,7 @@ def main():
       
         gt_itk = sitk.ReadImage(os.path.join(args.GT_dir,case))
         gt_array = sitk.GetArrayFromImage(gt_itk)
-        pred_itk = sitk.ReadImage(os.path.join(Pred_dir,case))
+        pred_itk = sitk.ReadImage(os.path.join(args.pred_dir,case))
         
         print(f'{ind}/30: evaluating {case}...')
         print()
@@ -584,9 +582,9 @@ def main():
         fg_dice = metric.binary.dc(pred_array!=0,gt_array!=0)
         all_results[ind, :, -1] = fg_dice
         print(f"foreground_dice:{fg_dice}")
-      np.save(os.path.join(Pred_dir,cal_filename)+'.npy', all_results)
+      np.save(os.path.join(args.pred_dir,cal_filename)+'.npy', all_results)
     else:
-        all_results = np.load(os.path.join(Pred_dir,cal_filename)+'.npy')
+        all_results = np.load(os.path.join(args.pred_dir,cal_filename)+'.npy')
     
     
     for ind, case in (enumerate(sorted(os.listdir(args.GT_dir)))):
@@ -602,7 +600,7 @@ def main():
         result_dict['dice'][class_list[i]] = mean_results[i,0]
         result_dict['HD95'][class_list[i]] = mean_results[i,1]
 
-    with open(os.path.join(Pred_dir,cal_filename)+'.json', 'w') as json_file:
+    with open(os.path.join(args.pred_dir,cal_filename)+'.json', 'w') as json_file:
         json.dump(result_dict, json_file, indent=4)
 
     print("done")
