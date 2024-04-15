@@ -145,7 +145,7 @@ def main():
         print('evaluating...')
         
         # nnUNet_WORDEvaluation 命令
-        command_evaluation = f"nnUNetv2_{dataset_dict[args.datasetnum]}Evaluation -p {output_folder}"
+        command_evaluation = f"nnUNetv2_{dataset_dict[args.datasetnum]}Evaluation -p {os.path.join(output_dir,output_folder)}"
             
         os.system(command_evaluation)
 
