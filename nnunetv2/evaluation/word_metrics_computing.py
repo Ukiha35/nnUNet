@@ -556,35 +556,32 @@ def main():
     }
     
     
-    if not os.path.exists(os.path.join(args.pred_dir,cal_filename)+'.npy'):
-      all_results = np.zeros((30,16,3))
-      for ind, case in (enumerate(sorted(os.listdir(args.GT_dir)))):
-      
-      # ind=0
-      # case="word_0057.nii.gz"
-      
-        gt_itk = sitk.ReadImage(os.path.join(args.GT_dir,case))
-        gt_array = sitk.GetArrayFromImage(gt_itk)
-        pred_itk = sitk.ReadImage(os.path.join(args.pred_dir,case))
-        
-        print(f'{ind}/30: evaluating {case}...')
-        print()
-        
-        gt_size = gt_itk.GetSize()
-        gt_spacing = gt_itk.GetSpacing()
-        
-        resampled_pred = sitk.Resample(pred_itk, gt_size, sitk.Transform(), sitk.sitkNearestNeighbor, pred_itk.GetOrigin(),
-                            gt_spacing, pred_itk.GetDirection(), 0.0, pred_itk.GetPixelID())
-        pred_array = sitk.GetArrayFromImage(resampled_pred)
-        
-        all_results[ind, :, :-1] = each_cases_metric(gt_array, pred_array, gt_spacing)
+    all_results = np.zeros((30,16,3))
+    for ind, case in (enumerate(sorted(os.listdir(args.GT_dir)))):
     
-        fg_dice = metric.binary.dc(pred_array!=0,gt_array!=0)
-        all_results[ind, :, -1] = fg_dice
-        print(f"foreground_dice:{fg_dice}")
-      np.save(os.path.join(args.pred_dir,cal_filename)+'.npy', all_results)
-    else:
-        all_results = np.load(os.path.join(args.pred_dir,cal_filename)+'.npy')
+    # ind=0
+    # case="word_0057.nii.gz"
+    
+      gt_itk = sitk.ReadImage(os.path.join(args.GT_dir,case))
+      gt_array = sitk.GetArrayFromImage(gt_itk)
+      pred_itk = sitk.ReadImage(os.path.join(args.pred_dir,case))
+      
+      print(f'{ind}/30: evaluating {case}...')
+      print()
+      
+      gt_size = gt_itk.GetSize()
+      gt_spacing = gt_itk.GetSpacing()
+      # print(pred_itk.GetSpacing())
+      # print(gt_spacing)
+      resampled_pred = sitk.Resample(pred_itk, gt_size, sitk.Transform(), sitk.sitkNearestNeighbor, pred_itk.GetOrigin(),
+                          gt_spacing, pred_itk.GetDirection(), 0.0, pred_itk.GetPixelID())
+      pred_array = sitk.GetArrayFromImage(resampled_pred)
+      
+      all_results[ind, :, :-1] = each_cases_metric(gt_array, pred_array, gt_spacing)
+  
+      fg_dice = metric.binary.dc(pred_array!=0,gt_array!=0)
+      all_results[ind, :, -1] = fg_dice
+      print(f"foreground_dice:{fg_dice}")
     
     
     for ind, case in (enumerate(sorted(os.listdir(args.GT_dir)))):
