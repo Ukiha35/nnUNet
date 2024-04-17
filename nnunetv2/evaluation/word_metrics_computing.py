@@ -580,12 +580,15 @@ def main():
       all_results[ind, :, :-1] = each_cases_metric(gt_array, pred_array, gt_spacing)
   
       fg_dice = metric.binary.dc(pred_array!=0,gt_array!=0)
-      all_results[ind, :, -1] = fg_dice
+      all_results[ind, :, 2] = fg_dice
       print(f"foreground_dice:{fg_dice}")
     
     
     for ind, case in (enumerate(sorted(os.listdir(args.GT_dir)))):
-      result_dict['detailed'][case] = {'foreground_dice': all_results[ind, 0, -1]}
+      result_dict['detailed'][case] = {'foreground_dice': all_results[ind, 0, 2]}
+      for i in range(len(class_list)):
+        result_dict['detailed'][case]['dice'][class_list[i]] = all_results[ind,i,0]
+        result_dict['detailed'][case]['HD95'][class_list[i]] = all_results[ind,i,1]
 
     result_dict["mean"] = {"dice":np.mean(all_results[:,:,0]),
                           "HD95":np.mean(all_results[:,:,1]),
