@@ -56,6 +56,9 @@ from nnunetv2.utilities.get_network_from_plans import get_network_from_plans
 from nnunetv2.utilities.helpers import empty_cache, dummy_context
 from nnunetv2.utilities.label_handling.label_handling import convert_labelmap_to_one_hot, determine_num_input_channels
 from nnunetv2.utilities.plans_handling.plans_handler import PlansManager, ConfigurationManager
+from nnunetv2.preprocessing.resampling.default_resampling import compute_new_shape
+
+import random
 from sklearn.model_selection import KFold
 from torch import autocast, nn
 from torch import distributed as dist
@@ -870,6 +873,14 @@ class nnUNetTrainer(object):
     def train_step(self, batch: dict) -> dict:
         data = batch['data']
         target = batch['target']
+        
+        # # resample
+        # original_spacing = [1] * (len(data.shape) - 2)
+        # target_spacing = [s * (random.random() * 0.3 + 1) for s in original_spacing]
+        # new_shape = compute_new_shape(data.shape[2:], original_spacing, target_spacing)
+
+        # data = self.configuration_manager.resampling_fn_data(data, new_shape, original_spacing, target_spacing)
+        # target = self.configuration_manager.resampling_fn_seg(target, new_shape, original_spacing, target_spacing)
 
         data = data.to(self.device, non_blocking=True)
         if isinstance(target, list):

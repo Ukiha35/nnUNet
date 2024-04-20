@@ -585,7 +585,9 @@ def main():
     
     
     for ind, case in (enumerate(sorted(os.listdir(args.GT_dir)))):
-      result_dict['detailed'][case] = {'foreground_dice': all_results[ind, 0, 2]}
+      result_dict['detailed'][case] = {'foreground_dice': all_results[ind, 0, 2],
+                                       'dice':{},
+                                       'HD95':{}}
       for i in range(len(class_list)):
         result_dict['detailed'][case]['dice'][class_list[i]] = all_results[ind,i,0]
         result_dict['detailed'][case]['HD95'][class_list[i]] = all_results[ind,i,1]

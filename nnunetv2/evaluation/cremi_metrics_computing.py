@@ -101,18 +101,17 @@ def evaluation(pred_dir,mode):
         truth_total = np.concatenate((truth_total,truth_array.flatten()))
         pred_prob_total = np.concatenate((pred_prob_total,pred_prob.flatten()))
     
-    if len(pred_prob_total.flatten()) > 0:
-        fpr, tpr, thr = metrics.roc_curve(truth_total.flatten(), pred_prob_total.flatten())
-        auc = metrics.auc(fpr,tpr)
-    else:
-        auc = -1
-        
+    # if len(pred_prob_total.flatten()) > 0:
+    #     fpr, tpr, thr = metrics.roc_curve(truth_total.flatten(), pred_prob_total.flatten())
+    #     auc = metrics.auc(fpr,tpr)
+    # else:
+    #     auc = -1
+    # result_dict['AUC'] = auc
+    # result_dict['f1 score'] = metrics.f1_score(truth_total, test_total)
     result_dict['average cremi score'] = np.array([result_dict[name]['cremi score'] for name in names]).mean()
-    result_dict['f1 score'] = metrics.f1_score(truth_total, test_total)
-    result_dict['AUC'] = auc
     print(f"average cremi score: {result_dict['average cremi score']}")
-    print(f"f1 score: {result_dict['f1 score']}")
-    print(f"AUC: {result_dict['AUC']}")
+    # print(f"f1 score: {result_dict['f1 score']}")
+    # print(f"AUC: {result_dict['AUC']}")
     
     with open(os.path.join(pred_dir,"predictionsTs_CREMIScore")+'.json', 'w') as json_file:
         json.dump(result_dict, json_file, indent=4)

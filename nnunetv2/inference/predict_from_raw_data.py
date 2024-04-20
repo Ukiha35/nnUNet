@@ -930,32 +930,35 @@ def predict_entry_point():
     #                           device=device)
 
 
-if __name__ == '__dmain__':
-    # predict a bunch of files
-    from nnunetv2.paths import nnUNet_results, nnUNet_raw
-    predictor = nnUNetPredictor(
-        tile_step_size=1,
-        use_gaussian=True,
-        use_mirroring=True,
-        perform_everything_on_gpu=True,
-        device=torch.device('cuda', 2),
-        verbose=False,
-        verbose_preprocessing=False,
-        allow_tqdm=True
-        )
-    predictor.initialize_from_trained_model_folder(
-        join(nnUNet_results, 'Dataset061_CREMI/nnUNetTrainer__nnUNetPlans__3d_fullres'),
-        use_folds=(0, ),
-        checkpoint_name='checkpoint_final.pth',
-    )
+if __name__ == '__main__':
     
-    # predict a numpy array
-    from nnunetv2.imageio.simpleitk_reader_writer import SimpleITKIO
-    img, props = SimpleITKIO().read_images(["/media/ps/passport2/ltc/nnUNetv2/nnUNet_raw/Dataset061_CREMI/imagesTs/sample_c_0000.nii.gz"])
-    ret = predictor.predict_single_npy_array(img, props, None, None, False)
+    predict_entry_point()
+    
+    # predict a bunch of files
+    # from nnunetv2.paths import nnUNet_results, nnUNet_raw
+    # predictor = nnUNetPredictor(
+    #     tile_step_size=1,
+    #     use_gaussian=True,
+    #     use_mirroring=True,
+    #     perform_everything_on_gpu=True,
+    #     device=torch.device('cuda', 2),
+    #     verbose=False,
+    #     verbose_preprocessing=False,
+    #     allow_tqdm=True
+    #     )
+    # predictor.initialize_from_trained_model_folder(
+    #     join(nnUNet_results, 'Dataset061_CREMI/nnUNetTrainer__nnUNetPlans__3d_fullres'),
+    #     use_folds=(0, ),
+    #     checkpoint_name='checkpoint_final.pth',
+    # )
+    
+    # # predict a numpy array
+    # from nnunetv2.imageio.simpleitk_reader_writer import SimpleITKIO
+    # img, props = SimpleITKIO().read_images(["/media/ps/passport2/ltc/nnUNetv2/nnUNet_raw/Dataset061_CREMI/imagesTs/sample_c_0000.nii.gz"])
+    # ret = predictor.predict_single_npy_array(img, props, None, None, False)
 
-    iterator = predictor.get_data_iterator_from_raw_npy_data([img], None, [props], None, 1)
-    predict_time, ret = predictor.predict_from_data_iterator(iterator, False, 1)
+    # iterator = predictor.get_data_iterator_from_raw_npy_data([img], None, [props], None, 1)
+    # predict_time, ret = predictor.predict_from_data_iterator(iterator, False, 1)
 
 
     # predictor = nnUNetPredictor(

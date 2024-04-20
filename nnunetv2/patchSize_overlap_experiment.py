@@ -140,7 +140,9 @@ def main():
     command_predict = f"CUDA_VISIBLE_DEVICES={args.cuda_num}  nnUNetv2_predict {save_prob} {prev_output} {overwrite} -chk {args.chk} --continue_prediction -i {input_dir} -o {os.path.join(output_dir,output_folder)} -d {args.datasetnum} -c {args.config} -f {args.fold} -step_size {args.step}"
     os.system(command_predict)
 
-    # os.remove(plan_file)
+    os.remove(plan_file)
+    shutil.copyfile(ori_plan_file, plan_file)
+    
     if args.mode != 'test_fafb':
         print('evaluating...')
         
