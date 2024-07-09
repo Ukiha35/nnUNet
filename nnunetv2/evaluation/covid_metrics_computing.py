@@ -519,17 +519,11 @@ def cal_metric(gt, pred, voxel_spacing):
         return np.array([0.0, 50])
 
 def each_cases_metric(gt, pred, voxel_spacing):
-    classes_num = gt.max() + 1
-    class_wise_metric = np.zeros((classes_num-1, 2))
-    for cls in tqdm(range(1, classes_num)):
+    class_wise_metric = np.zeros((2))
+    surface_distances = compute_surface_distances(gt, pred, voxel_spacing)
+    class_wise_metric[:] = [compute_dice_coefficient(gt, pred),compute_surface_dice_at_tolerance(surface_distances, 1)]
         
-        # COVID 19 
-        # surface_distances = compute_surface_distances(gt==cls, pred==cls, voxel_spacing)
-        # class_wise_metric[cls-1, ...] = [compute_dice_coefficient(gt==cls, pred==cls),compute_robust_hausdorff(surface_distances, 95)]
-        
-        # WORD
-        class_wise_metric[cls-1, ...] = cal_metric(pred==cls, gt==cls, voxel_spacing)
-        
+
     print(class_wise_metric)
     return class_wise_metric
 
@@ -538,68 +532,49 @@ cal_filename = "predictionsTs"
 class_list = ['Liver','Spleen','Kidney(L)','Kidney(R)','Stomach','Gallbladder','Esophagus','Pancreas','Duodenum','Colon','Intestine','Adrenal','Rectum','Bladder','Head of Femur(L)','Head of Femur(R)']
 
 
-def evaluation_one(args,id="0014"):
+def evaluation_one(args,id="0255"):
   result_dict = {
       "name": args.pred_dir,
       "mean": {},
-      "dice": {},
-      "HD95": {},
       "detailed": {}
   }
   
   
-  all_results = np.zeros((1,16,3))
+  all_results = np.zeros((1,2))
   
   ind=0
-  case=f"word_{id}.nii.gz"
+  case=f"study_{id}.nii.gz"
 
   gt_itk = sitk.ReadImage(os.path.join(args.GT_dir,case))
   gt_array = sitk.GetArrayFromImage(gt_itk)
   pred_itk = sitk.ReadImage(os.path.join(args.pred_dir,case))
   pred_array = sitk.GetArrayFromImage(pred_itk)
-  
+
   print(f'{ind}/1: evaluating {case}...')
   print()
   
   gt_size = gt_itk.GetSize()
   gt_spacing = gt_itk.GetSpacing()
-  
+
   if gt_array.shape != pred_array.shape:
-      raise ValueError(f"shape of gt_array({gt_array.shape}) != shape of pred_array({pred_array.shape})")
-    # resampled_pred = sitk.Resample(pred_itk, gt_size, sitk.Transform(), sitk.sitkNearestNeighbor, pred_itk.GetOrigin(),
-    #                     gt_spacing, pred_itk.GetDirection(), 0.0, pred_itk.GetPixelID())
-    # pred_array = sitk.GetArrayFromImage(resampled_pred)
+    ValueError(f"shape of gt_array({gt_array.shape}) != shape of pred_array({pred_array.shape})")
+  # resampled_pred = sitk.Resample(pred_itk, gt_size, sitk.Transform(), sitk.sitkNearestNeighbor, pred_itk.GetOrigin(),
+  #                     gt_spacing, pred_itk.GetDirection(), 0.0, pred_itk.GetPixelID())
+  # pred_array = sitk.GetArrayFromImage(resampled_pred)
   
-  all_results[ind, :, :-1] = each_cases_metric(gt_array, pred_array, gt_spacing)
-
-  fg_dice = metric.binary.dc(pred_array!=0,gt_array!=0)
-  all_results[ind, :, 2] = fg_dice
-  print(f"foreground_dice:{fg_dice}")
-
+  all_results[ind, :] = each_cases_metric(gt_array, pred_array, gt_spacing)
   
+  result_dict['detailed'][case] = {'dice':{},
+                                  'surface dice':{}}
 
-  result_dict['detailed'][case] = {'foreground_dice': all_results[ind, 0, 2],
-                                    'dice':{},
-                                    'HD95':{}}
-  for i in range(len(class_list)):
-    result_dict['detailed'][case]['dice'][class_list[i]] = all_results[ind,i,0]
-    result_dict['detailed'][case]['HD95'][class_list[i]] = all_results[ind,i,1]
-
-  result_dict["mean"] = {"dice":np.mean(all_results[:,:,0]),
-                        "HD95":np.mean(all_results[:,:,1]),
-                        "part_HD95":np.mean(all_results[:,:-2,1]),
-                        "foreground_dice":np.mean(all_results[:,0,2])}
-  
-  mean_results = np.mean(all_results,0)
-  for i in range(len(class_list)):
-      result_dict['dice'][class_list[i]] = mean_results[i,0]
-      result_dict['HD95'][class_list[i]] = mean_results[i,1]
+  result_dict["mean"] = {"dice":np.mean(all_results[:,0]),
+                        "surface dice":np.mean(all_results[:,1])}
 
   with open(os.path.join(args.pred_dir,cal_filename)+'.json', 'w') as json_file:
       json.dump(result_dict, json_file, indent=4)
 
-  print(f"dice:{np.mean(all_results[:,:,0])}")
-  print(f"HD95:{np.mean(all_results[:,:,1])}")
+  print(f"dice:{np.mean(all_results[:,0])}")
+  print(f"surface dice:{np.mean(all_results[:,1])}")
   print("done")
   return result_dict
 
@@ -610,7 +585,7 @@ def evaluation_test(args):
     gt_itk = sitk.ReadImage(os.path.join(args.GT_dir,case))
     pred_itk = sitk.ReadImage(os.path.join(args.pred_dir,case))
     
-    print(f'{ind}/30: evaluating {case}...')
+    print(f'{ind}/50: evaluating {case}...')
     print()
     
     gt_size = gt_itk.GetSize()
@@ -624,21 +599,19 @@ def evaluation(args):
   result_dict = {
       "name": args.pred_dir,
       "mean": {},
-      "dice": {},
-      "HD95": {},
       "detailed": {}
   }
   
   
-  all_results = np.zeros((30,16,3))
+  all_results = np.zeros((50,2))
   for ind, case in (enumerate(sorted(os.listdir(args.GT_dir)))):
     gt_itk = sitk.ReadImage(os.path.join(args.GT_dir,case))
     gt_array = sitk.GetArrayFromImage(gt_itk)
     pred_itk = sitk.ReadImage(os.path.join(args.pred_dir,case))
     pred_array = sitk.GetArrayFromImage(pred_itk)
 
-    print(f'{ind}/30: evaluating {case}...')
     print()
+    print(f'{ind}/50: evaluating {case}...')
     
     gt_size = gt_itk.GetSize()
     gt_spacing = gt_itk.GetSpacing()
@@ -649,42 +622,26 @@ def evaluation(args):
     #                     gt_spacing, pred_itk.GetDirection(), 0.0, pred_itk.GetPixelID())
     # pred_array = sitk.GetArrayFromImage(resampled_pred)
     
-    all_results[ind, :, :-1] = each_cases_metric(gt_array, pred_array, gt_spacing)
-
-    fg_dice = metric.binary.dc(pred_array!=0,gt_array!=0)
-    all_results[ind, :, 2] = fg_dice
-    print(f"foreground_dice:{fg_dice}")
-  
+    all_results[ind, :] = each_cases_metric(gt_array, pred_array, gt_spacing)
   
   for ind, case in (enumerate(sorted(os.listdir(args.GT_dir)))):
-    result_dict['detailed'][case] = {'foreground_dice': all_results[ind, 0, 2],
-                                      'dice':{},
-                                      'HD95':{}}
-    for i in range(len(class_list)):
-      result_dict['detailed'][case]['dice'][class_list[i]] = all_results[ind,i,0]
-      result_dict['detailed'][case]['HD95'][class_list[i]] = all_results[ind,i,1]
+    result_dict['detailed'][case] = {'dice':{},
+                                    'surface dice':{}}
 
-  result_dict["mean"] = {"dice":np.mean(all_results[:,:,0]),
-                        "HD95":np.mean(all_results[:,:,1]),
-                        "part_HD95":np.mean(all_results[:,:-2,1]),
-                        "foreground_dice":np.mean(all_results[:,0,2])}
-  
-  mean_results = np.mean(all_results,0)
-  for i in range(len(class_list)):
-      result_dict['dice'][class_list[i]] = mean_results[i,0]
-      result_dict['HD95'][class_list[i]] = mean_results[i,1]
+  result_dict["mean"] = {"dice":np.mean(all_results[:,0]),
+                        "surface dice":np.mean(all_results[:,1])}
 
   with open(os.path.join(args.pred_dir,cal_filename)+'.json', 'w') as json_file:
       json.dump(result_dict, json_file, indent=4)
 
-  print(f"dice:{np.mean(all_results[:,:,0])}")
-  print(f"HD95:{np.mean(all_results[:,:,1])}")
+  print(f"dice:{np.mean(all_results[:,0])}")
+  print(f"surface dice:{np.mean(all_results[:,1])}")
   print("done")
   return result_dict
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--GT_dir", default="/media/ps/passport2/ltc/nnUNetv2/nnUNet_raw/Dataset100_WORD/labelsTs",required=False)
+    parser.add_argument("--GT_dir", default="/media/ps/passport2/ltc/nnUNetv2/nnUNet_raw/Dataset101_COVID/labelsTs",required=False)
     parser.add_argument('-p', '--pred_dir', help="pred_exp_name",
                         default="/media/ps/passport2/ltc/nnUNetv2/nnUNet_outputs/WORD/3d_lowres/fold2/6_4_4_patch96_128_128_step0.5_chkfinal_down1.0_1.0_1.0/stage_2/save_stage2_roi_th_0.5_level_sample_8.0_16.0_16.0_patch_64_192_160_center_canvas_64_192_160_shuffle_False_nms_0.5_prior_False_expand0_itc_0.0_pix_0.0_child_nmm_0.35_max/", required=False)
     parser.add_argument('--mode',type=str,default='word')
@@ -696,8 +653,8 @@ def main():
         pred_itk = sitk.ReadImage(os.path.join(args.pred_dir,case))
       evaluation(args)
     except:
-      print(f"prediction not done, trying to evaluate word_14 only!")
-      evaluation_one(args,id="0014")
+      print(f"prediction not done, trying to evaluate study_0255 only!")
+      evaluation_one(args,id="0255")
 
     '''
     plt.imsave("gt.jpg",gt_array[100,:,:])

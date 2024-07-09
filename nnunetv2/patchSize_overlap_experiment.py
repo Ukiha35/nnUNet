@@ -6,7 +6,7 @@ import json
 import SimpleITK as sitk
 from tqdm import tqdm
 
-dataset_dict = {61:'CREMI',62:'CREMI',100:'WORD'}
+dataset_dict = {61:'CREMI',62:'CREMI',100:'WORD',101:'COVID'}
 
 
 def input_resample(folder_path, output_folder_path,downsample):
@@ -53,6 +53,7 @@ def main():
     parser.add_argument("--config", default="2d", required=False)
     parser.add_argument("--downsample", type=float, nargs='+', default=[1,1,1], required=False)
     parser.add_argument("--mode", type=str, default='normal', help='normal,test_fafb')
+    parser.add_argument("--disable_mirror", action='store_true', required=False, default=False, help='disable mirror')
     args = parser.parse_args()
     
     assert args.datasetnum in dataset_dict
@@ -136,8 +137,13 @@ def main():
         save_prob = ''
     else:
         save_prob = '--save_probabilities'
+    if args.disable_mirror:
+        tta = '--disable_tta'
+    else:
+        tta = ''
     
-    command_predict = f"CUDA_VISIBLE_DEVICES={args.cuda_num}  nnUNetv2_predict {save_prob} {prev_output} {overwrite} -chk {args.chk} --continue_prediction -i {input_dir} -o {os.path.join(output_dir,output_folder)} -d {args.datasetnum} -c {args.config} -f {args.fold} -step_size {args.step}"
+    
+    command_predict = f"CUDA_VISIBLE_DEVICES={args.cuda_num}  nnUNetv2_predict {save_prob} {prev_output} {overwrite} -chk {args.chk} --continue_prediction -i {input_dir} -o {os.path.join(output_dir,output_folder)} -d {args.datasetnum} -c {args.config} -f {args.fold} -step_size {args.step} {tta}"
     os.system(command_predict)
 
     os.remove(plan_file)

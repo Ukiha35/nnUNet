@@ -424,6 +424,8 @@ class nnUNetTrainer(object):
             initial_patch_size[0] = patch_size[0]
 
         self.print_to_log_file(f'do_dummy_2d_data_aug: {do_dummy_2d_data_aug}')
+        if self.plans_manager.plans['dataset_name'] == 'Dataset100_WORD':
+            mirror_axes = None 
         self.inference_allowed_mirroring_axes = mirror_axes
 
         return rotation_for_DA, do_dummy_2d_data_aug, initial_patch_size, mirror_axes

@@ -4,6 +4,8 @@ from torch.multiprocessing import Event, Process, Queue, Manager
 
 from time import sleep
 from typing import Union, List
+import SimpleITK as sitk
+import os
 
 import numpy as np
 import torch
@@ -42,6 +44,11 @@ def preprocess_fromfiles_save_to_queue(list_of_lists: List[List[str]],
 
             item = {'data': data, 'data_properties': data_properties,
                     'ofile': output_filenames_truncated[idx] if output_filenames_truncated is not None else None}
+            
+            if configuration_manager.settings_2stage is not None:
+                first_stage_map_itk = sitk.ReadImage(os.path.join(configuration_manager.settings_2stage['prior_path'], list_of_lists[idx][0].split('/')[-1].split('_0000')[0]+'.nii.gz'))
+                item['first_stage_map'] = sitk.GetArrayFromImage(first_stage_map_itk)
+                
             success = False
             while not success:
                 try:

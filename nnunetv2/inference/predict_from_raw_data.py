@@ -5,7 +5,8 @@ import traceback
 from copy import deepcopy
 from time import sleep
 from typing import Tuple, Union, List, Optional
-
+import json
+# os.environ['CUDA_VISIBLE_DEVICES'] = "3"
 import numpy as np
 import torch
 from acvl_utils.cropping_and_padding.padding import pad_nd_image
@@ -67,7 +68,8 @@ class nnUNetPredictor(object):
 
     def initialize_from_trained_model_folder(self, model_training_output_dir: str,
                                              use_folds: Union[Tuple[Union[int, str]], None],
-                                             checkpoint_name: str = 'checkpoint_final.pth'):
+                                             checkpoint_name: str = 'checkpoint_final.pth',
+                                             settings_2stage = None):
         """
         This is used when making predictions with a trained model
         """
@@ -95,6 +97,12 @@ class nnUNetPredictor(object):
             parameters.append(checkpoint['network_weights'])
 
         configuration_manager = plans_manager.get_configuration(configuration_name)
+        if settings_2stage is not None:
+            with open(settings_2stage, 'r') as f:
+                configuration_manager.settings_2stage = json.load(f)
+            configuration_manager.configuration['previous_stage'] = 'something'
+        else:
+            configuration_manager.settings_2stage = None
         # restore network
         num_input_channels = determine_num_input_channels(plans_manager, configuration_manager, dataset_json)
         trainer_class = recursive_find_python_class(join(nnunetv2.__path__[0], "training", "nnUNetTrainer"),
@@ -391,7 +399,7 @@ class nnUNetPredictor(object):
         with multiprocessing.get_context("spawn").Pool(num_processes_segmentation_export) as export_pool:
             worker_list = [i for i in export_pool._pool]
             r = []
-            total_predict_time = 0
+            total_predict_time = 0.0
             for preprocessed in data_iterator:
                 data = preprocessed['data']
                 if isinstance(data, str):
@@ -512,7 +520,7 @@ class nnUNetPredictor(object):
         # things a lot faster for some datasets.
         original_perform_everything_on_gpu = self.perform_everything_on_gpu
         with torch.no_grad():
-            predict_time = 0
+            predict_time = 0.0
             prediction = None
             if self.perform_everything_on_gpu:
                 try:
@@ -687,13 +695,17 @@ class nnUNetPredictor(object):
 
                 if self.verbose: print('running prediction')
                 predict_time = 0
+                workon = data[slicers[0]][None].to(self.device, non_blocking=False)
+                prediction = self._internal_maybe_mirror_and_predict(workon)[0].to(results_device)
+                time.sleep(1)
                 for sl in tqdm(slicers, disable=not self.allow_tqdm):
                     workon = data[sl][None]
                     workon = workon.to(self.device, non_blocking=False)
-
+                    time.sleep(0.2)
                     st = time.time()
                     prediction = self._internal_maybe_mirror_and_predict(workon)[0].to(results_device)
                     end = time.time()
+                    # print(f"time cost: {end - st}s")
                     predict_time += (end - st)
                     
                     predicted_logits[sl] += (prediction * gaussian if self.use_gaussian else prediction)
@@ -701,6 +713,7 @@ class nnUNetPredictor(object):
 
                 predicted_logits /= n_predictions
         empty_cache(self.device)
+        print(f"time cost: {predict_time}s")
         return predict_time, predicted_logits[tuple([slice(None), *slicer_revert_padding[1:]])]
 
 
@@ -853,7 +866,8 @@ def predict_entry_point():
                         help="Use this to set the device the inference should run with. Available options are 'cuda' "
                              "(GPU), 'cpu' (CPU) and 'mps' (Apple M1/M2). Do NOT use this to set which GPU ID! "
                              "Use CUDA_VISIBLE_DEVICES=X nnUNetv2_predict [...] instead!")
-
+    parser.add_argument('-settings_2stage', type=str, default=None, required=False, help='Using this will activate the 2stage inference')
+    
     print(
         "\n#######################################################################\nPlease cite the following paper "
         "when using nnU-Net:\n"
@@ -897,8 +911,13 @@ def predict_entry_point():
     predictor.initialize_from_trained_model_folder(
         model_folder,
         args.f,
-        checkpoint_name=args.chk
+        checkpoint_name=args.chk,
+        settings_2stage = args.settings_2stage
     )
+    
+    if args.settings_2stage is not None:
+        args.prev_stage_predictions = predictor.configuration_manager.settings_2stage['prior_path']
+    
     predict_time, _ = predictor.predict_from_files(args.i, args.o, save_probabilities=args.save_probabilities,
                                  overwrite=not args.continue_prediction,
                                  num_processes_preprocessing=args.npp,
