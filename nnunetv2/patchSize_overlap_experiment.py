@@ -52,7 +52,7 @@ def main():
     parser.add_argument("--chk", default="checkpoint_final.pth", required=False)
     parser.add_argument("--config", default="2d", required=False)
     parser.add_argument("--downsample", type=float, nargs='+', default=[1,1,1], required=False)
-    parser.add_argument("--mode", type=str, default='normal', help='normal,test_fafb')
+    parser.add_argument("--mode", type=str, default='normal', help='normal,fafb')
     parser.add_argument("--disable_mirror", action='store_true', required=False, default=False, help='disable mirror')
     args = parser.parse_args()
     
@@ -81,9 +81,9 @@ def main():
 
     output_dir = f"/media/ps/passport2/ltc/nnUNetv2/nnUNet_outputs/{dataset_dict[args.datasetnum]}"
 
-    if args.mode == 'test_fafb':
-        input_dir = f"/media/ps/passport2/ltc/nnUNetv2/nnUNet_raw/Dataset{args.datasetnum:03d}_{dataset_dict[args.datasetnum]}/imagesTs_fafb"
-        output_dir = f"/media/ps/passport2/ltc/nnUNetv2/nnUNet_outputs/fafb_{dataset_dict[args.datasetnum]}"
+    if args.mode == 'fafb':
+        input_dir = f"/media/ps/passport1/ltc/nnUNetv2/nnUNet_raw/Dataset{args.datasetnum:03d}_{dataset_dict[args.datasetnum]}/imagesTs_fafb"
+        output_dir = f"/media/ps/passport1/ltc/nnUNetv2/nnUNet_outputs/fafb_{dataset_dict[args.datasetnum]}"
         
     print("creating settings...")
     
@@ -116,9 +116,9 @@ def main():
 
     # nnUNet_predict 命令
     if args.config == '2d':
-        output_folder = os.path.join(args.config,f"fold{args.fold}",f"patch{args.patch_size[0]}_{args.patch_size[1]}_step{args.step}_chk{args.chk.split('.')[0].split('_')[-1]}_down{args.downsample[0]}_{args.downsample[1]}_{args.downsample[2]}")
+        output_folder = os.path.join(args.config,f"fold{args.fold}",f"patch{args.patch_size[0]}_{args.patch_size[1]}_step{args.step}_chk{args.chk.split('.')[0].split('_')[-1]}_down{args.downsample[0]}_{args.downsample[1]}_{args.downsample[2]}{'_disable_tta' if args.disable_mirror else ''}")
     else:
-        output_folder = os.path.join(args.config,f"fold{args.fold}",f"patch{args.patch_size[0]}_{args.patch_size[1]}_{args.patch_size[2]}_step{args.step}_chk{args.chk.split('.')[0].split('_')[-1]}_down{args.downsample[0]}_{args.downsample[1]}_{args.downsample[2]}")
+        output_folder = os.path.join(args.config,f"fold{args.fold}",f"patch{args.patch_size[0]}_{args.patch_size[1]}_{args.patch_size[2]}_step{args.step}_chk{args.chk.split('.')[0].split('_')[-1]}_down{args.downsample[0]}_{args.downsample[1]}_{args.downsample[2]}{'_disable_tta' if args.disable_mirror else ''}")
            
     if args.overwrite:
         if os.path.exists(os.path.join(output_dir,output_folder)):
@@ -133,10 +133,10 @@ def main():
         prev_output = '-prev_stage_predictions '+os.path.join(settings_dir,f'nnUNetTrainer__nnUNetPlans__3d_cascade_fullres/fold_{args.fold}/validation/')
     else:
         prev_output = ''
-    if args.mode == "test_fafb" or args.config != '3d_lowres':
-        save_prob = ''
-    else:
+    if args.config == '3d_lowres':
         save_prob = '--save_probabilities'
+    else:
+        save_prob = ''
     if args.disable_mirror:
         tta = '--disable_tta'
     else:
@@ -149,13 +149,13 @@ def main():
     os.remove(plan_file)
     shutil.copyfile(ori_plan_file, plan_file)
     
-    if args.mode != 'test_fafb':
-        print('evaluating...')
+    print('evaluating...')
+    
+    # nnUNet_WORDEvaluation 命令
+    mode = "--mode fafb" if args.mode == 'fafb' else ''
+    command_evaluation = f"nnUNetv2_{dataset_dict[args.datasetnum]}Evaluation -p {os.path.join(output_dir,output_folder)} {mode}"
         
-        # nnUNet_WORDEvaluation 命令
-        command_evaluation = f"nnUNetv2_{dataset_dict[args.datasetnum]}Evaluation -p {os.path.join(output_dir,output_folder)}"
-            
-        os.system(command_evaluation)
+    os.system(command_evaluation)
 
 if __name__ == "__main__":
     main()

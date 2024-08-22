@@ -1,10 +1,11 @@
 #!/usr/bin/python
 
 from cremi.io import CremiFile
-from cremi.evaluation import NeuronIds, Clefts, SynapticPartners
+# from cremi.evaluation import NeuronIds, Clefts, SynapticPartners
 from collections import OrderedDict
 from batchgenerators.utilities.file_and_folder_operations import *
 import numpy as np
+from scipy import ndimage
 import SimpleITK as sitk
 import shutil
 import os
@@ -20,43 +21,64 @@ try:
 except ImportError:
     h5py = None
 
-def evaluate_one(Pred_dir,GT_dir,file_name):
-    if not os.path.exists(join(GT_dir, "imagesTs", f"{file_name}.hdf")):
-        out_a = CremiFile(join(GT_dir, "imagesTs", f"{file_name}.hdf"), 'w')
-        
-        gt_image = sitk.GetArrayFromImage(sitk.ReadImage(join(GT_dir, "imagesTs", f"{file_name}_0000.nii.gz"))).astype(np.uint64)
-        gt_image[gt_image == 0] = 0xffffffffffffffff
-        volume = Volume(gt_image, (40., 4., 4.))
-        out_a.write_raw(volume)
-        
-        gt_label = sitk.GetArrayFromImage(sitk.ReadImage(join(GT_dir, "labelsTs", f"{file_name}.nii.gz"))).astype(np.uint64)
-        gt_label[gt_label == 0] = 0xffffffffffffffff
-        clefts = Volume(gt_label, (40., 4., 4.))
-        out_a.write_clefts(clefts)
-        
-        out_a.close()
-    
-    # if not os.path.exists(join(Pred_dir, f"{file_name}.hdf")):
-    pred = sitk.GetArrayFromImage(sitk.ReadImage(join(Pred_dir, f"{file_name}.nii.gz"))).astype(np.uint64)
-    pred[pred == 0] = 0xffffffffffffffff
-    out_a = CremiFile(join(Pred_dir, f'{file_name}.hdf'), 'w')
-    clefts = Volume(pred, (40., 4., 4.))
-    out_a.write_clefts(clefts)
-    out_a.close()
-    
-    test = CremiFile(join(Pred_dir, f'{file_name}.hdf'), 'r')
-    truth = CremiFile(join(GT_dir, "imagesTs", f'{file_name}.hdf'), 'r')
+class Clefts:
 
-    clefts_evaluation = Clefts(test.read_clefts(), truth.read_clefts())
+    def __init__(self, test, truth):
 
-    test_array = np.array(test.read_clefts().data,dtype=np.uint8) == 1
-    truth_array = np.array(truth.read_clefts().data,dtype=np.uint8) == 1
-    
-    if os.path.exists(join(Pred_dir, f"{file_name}.npz")):
-        pred_prob = np.load(join(Pred_dir, f"{file_name}.npz"))['probabilities'][1]
-    else:
-        pred_prob = np.array([])
-    # dice = metric.binary.dc(test_array, truth_array)
+        # background is True, foreground is False
+        self.test_clefts_mask = ~(sitk.GetArrayFromImage(test).astype(bool))
+        self.truth_clefts_mask = ~(sitk.GetArrayFromImage(truth).astype(bool))
+	
+        # distance to foreground
+        self.test_clefts_edt = ndimage.distance_transform_edt(self.test_clefts_mask, sampling=np.flip(test.GetSpacing()))
+        self.truth_clefts_edt = ndimage.distance_transform_edt(self.truth_clefts_mask, sampling=np.flip(test.GetSpacing()))
+
+    def count_false_positives(self, threshold = 200):
+        # distance to gt_foreground > 200 is gt_negative
+        mask1 = np.invert(self.test_clefts_mask)
+        mask2 = self.truth_clefts_edt > threshold
+        false_positives = self.truth_clefts_edt[np.logical_and(mask1, mask2)]
+        return false_positives.size
+
+    def count_false_negatives(self, threshold = 200):
+
+        mask1 = np.invert(self.truth_clefts_mask)
+        mask2 = self.test_clefts_edt > threshold
+        false_negatives = self.test_clefts_edt[np.logical_and(mask1, mask2)]
+        return false_negatives.size
+
+    def acc_false_positives(self):
+        
+        mask = np.invert(self.test_clefts_mask)
+        false_positives = self.truth_clefts_edt[mask]
+        stats = {
+            'mean': np.mean(false_positives),
+            'std': np.std(false_positives),
+            'max': np.amax(false_positives),
+            'count': false_positives.size,
+            'median': np.median(false_positives)}
+        return stats
+
+    def acc_false_negatives(self):
+
+        mask = np.invert(self.truth_clefts_mask)
+        false_negatives = self.test_clefts_edt[mask]
+        stats = {
+            'mean': np.mean(false_negatives),
+            'std': np.std(false_negatives),
+            'max': np.amax(false_negatives),
+            'count': false_negatives.size,
+            'median': np.median(false_negatives)}
+        return stats
+
+
+
+cal_filename = "predictionsTs"
+
+
+def evaluate_one(pred,gt_label,file_name):
+
+    clefts_evaluation = Clefts(pred, gt_label)
 
     false_positive_count = clefts_evaluation.count_false_positives()
     false_negative_count = clefts_evaluation.count_false_negatives()
@@ -73,59 +95,65 @@ def evaluate_one(Pred_dir,GT_dir,file_name):
     print ("\tdistance to ground truth: " + str(false_positive_stats))
     print ("\tdistance to proposal    : " + str(false_negative_stats))
     
-    return false_positive_count,false_negative_count,false_positive_stats,false_negative_stats,test_array,truth_array,pred_prob
+    return false_positive_count,false_negative_count,false_positive_stats,false_negative_stats
 
-def evaluation(pred_dir,mode):
-    result_dict = {"name": pred_dir}
-    test_total = np.array([],dtype=bool)
-    truth_total = np.array([],dtype=bool)
-    pred_prob_total = np.array([],dtype=bool)
-    
+def evaluation(pred_dir,mode,c):
+    result_dict = {
+        "name": pred_dir,
+        "mean": {},
+        "detailed": {}}
+
     if mode == 'ab':
-        names = ['sample_c']
-        GT_dir="/media/ps/passport2/ltc/nnUNetv2/nnUNet_raw/Dataset061_CREMI"
-    else:
-        names = ['sample_a_test','sample_b_test','sample_c_test']
-        GT_dir="/media/ps/passport2/ltc/nnUNetv2/nnUNet_raw/Dataset062_CREMI"
+        names = ['sample_c.nii.gz']
+        GT_dir="/media/ps/passport2/ltc/nnUNetv2/nnUNet_raw/Dataset061_CREMI/labelsTs"
+    elif mode == 'abc':
+        names = ['sample_a_test.nii.gz','sample_b_test.nii.gz','sample_c_test.nii.gz']
+        GT_dir="/media/ps/passport2/ltc/nnUNetv2/nnUNet_raw/Dataset062_CREMI/labelsTs"
+    elif mode == 'fafb':
+        GT_dir="/media/ps/passport1/ltc/nnUNetv2/nnUNet_raw/Dataset062_CREMI/labelsTs_fafb"
+        names = os.listdir(GT_dir)
     
     for name in names:
-        false_positive_count, false_negative_count, false_positive_stats, false_negative_stats, test_array, truth_array, pred_prob = evaluate_one(pred_dir,GT_dir,name)
-        result_dict[name] = {
-            "false positives": false_positive_count,
-            "false negatives": false_negative_count,
-            "distance to ground truth": false_positive_stats,
-            "distance to proposal": false_negative_stats,
-            "cremi score": (false_positive_stats['mean']+false_negative_stats['mean'])/2,
-        }
-        test_total = np.concatenate((test_total,test_array.flatten()))
-        truth_total = np.concatenate((truth_total,truth_array.flatten()))
-        pred_prob_total = np.concatenate((pred_prob_total,pred_prob.flatten()))
-    
-    # if len(pred_prob_total.flatten()) > 0:
-    #     fpr, tpr, thr = metrics.roc_curve(truth_total.flatten(), pred_prob_total.flatten())
-    #     auc = metrics.auc(fpr,tpr)
-    # else:
-    #     auc = -1
-    # result_dict['AUC'] = auc
-    # result_dict['f1 score'] = metrics.f1_score(truth_total, test_total)
-    result_dict['average cremi score'] = np.array([result_dict[name]['cremi score'] for name in names]).mean()
-    print(f"average cremi score: {result_dict['average cremi score']}")
-    # print(f"f1 score: {result_dict['f1 score']}")
-    # print(f"AUC: {result_dict['AUC']}")
-    
-    with open(os.path.join(pred_dir,"predictionsTs_CREMIScore")+'.json', 'w') as json_file:
+        try:
+            gt_label = sitk.ReadImage(join(GT_dir, name))
+            pred = sitk.ReadImage(join(pred_dir, name))
+        except:
+            continue
+        
+        if c:
+            try:
+                with open(os.path.join(pred_dir,cal_filename)+'.json', 'r') as json_file:
+                    result_dict = json.load(json_file)
+            except:
+                pass
+        if name not in result_dict['detailed'].keys():
+            false_positive_count, false_negative_count, false_positive_stats, false_negative_stats = evaluate_one(pred,gt_label,name)
+            result_dict['detailed'][name] = {
+                "false positives": false_positive_count,
+                "false negatives": false_negative_count,
+                "distance to ground truth": false_positive_stats,
+                "distance to proposal": false_negative_stats,
+                "cremi score": (false_positive_stats['mean']+false_negative_stats['mean'])/2,
+            }
+
+        
+    result_dict['mean']['average cremi score'] = np.array([result_dict['detailed'][name]['cremi score'] for name in names]).mean()
+    print(f"average cremi score: {result_dict['mean']['average cremi score']}")
+
+    with open(os.path.join(pred_dir,cal_filename)+'.json', 'w') as json_file:
         json.dump(result_dict, json_file, indent=4)
     return result_dict
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('-p', '--pred_dir', help="pred_exp_name",default="Test", required=False)
+    parser.add_argument('-p', '--pred_dir', help="pred_exp_name",default="/media/ps/passport1/ltc/nnUNetv2/nnUNet_outputs/fafb_CREMI/3d_fullres/fold3/patch24_256_256_step0.5_chkfinal_down1.0_1.0_1.0/", required=False)
+    parser.add_argument('--continue_evaluation', action='store_true', default=False)
     parser.add_argument('--mode',type=str,default='abc')
     
     args = parser.parse_args()
-    assert args.mode in ['abc', 'ab']
+    assert args.mode in ['abc', 'ab', 'fafb']
 
-    evaluation(pred_dir=args.pred_dir,mode=args.mode)
+    evaluation(pred_dir=args.pred_dir,mode=args.mode,c=args.continue_evaluation)
     
     
         

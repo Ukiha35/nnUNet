@@ -552,16 +552,23 @@ def evaluation_list(args,id=["study_0255.nii.gz"]):
     #                     gt_spacing, pred_itk.GetDirection(), 0.0, pred_itk.GetPixelID())
     # pred_array = sitk.GetArrayFromImage(resampled_pred)
     
-    all_results[ind, :] = each_cases_metric(gt_array, pred_array, gt_spacing)
-  
-  for ind, case in (enumerate(sorted(id))):
-    result_dict['detailed'][case] = {'dice':all_results[ind, 0],
-                                    'surface dice':all_results[ind, 1],
-                                    'recall':all_results[ind, 2]}
-
-  result_dict["mean"] = {"dice":np.mean(all_results[:,0]),
-                        "surface dice":np.mean(all_results[:,1]),
-                        "recall": np.mean(all_results[:,2])}
+    if args.continue_evaluation:
+      try:
+        with open(os.path.join(args.pred_dir,cal_filename)+'.json', 'r') as json_file:
+          result_dict = json.load(json_file)
+      except:
+          pass
+    if result_dict['detailed'][case] is None:
+      all_results[ind, :] = each_cases_metric(gt_array, pred_array, gt_spacing)
+      result_dict['detailed'][case] = {
+        'dice':all_results[ind, 0],
+        'surface dice':all_results[ind, 1],
+        "recall": all_results[ind,2]}
+    
+  result_dict["mean"] = {
+    "dice":np.mean(all_results[:,0]),
+    "surface dice":np.mean(all_results[:,1]),
+    "recall": np.mean(all_results[:,2])}
 
   with open(os.path.join(args.pred_dir,cal_filename)+'.json', 'w') as json_file:
       json.dump(result_dict, json_file, indent=4)
@@ -599,10 +606,13 @@ def evaluation(args):
   
   all_results = np.zeros((50,3))
   for ind, case in (enumerate(sorted(os.listdir(args.GT_dir)))):
-    gt_itk = sitk.ReadImage(os.path.join(args.GT_dir,case))
-    gt_array = sitk.GetArrayFromImage(gt_itk)
-    pred_itk = sitk.ReadImage(os.path.join(args.pred_dir,case))
-    pred_array = sitk.GetArrayFromImage(pred_itk)
+    try:
+      gt_itk = sitk.ReadImage(os.path.join(args.GT_dir,case))
+      gt_array = sitk.GetArrayFromImage(gt_itk)
+      pred_itk = sitk.ReadImage(os.path.join(args.pred_dir,case))
+      pred_array = sitk.GetArrayFromImage(pred_itk)
+    except:
+      continue
 
     print()
     print(f'{ind}/50: evaluating {case}...')
@@ -616,16 +626,23 @@ def evaluation(args):
     #                     gt_spacing, pred_itk.GetDirection(), 0.0, pred_itk.GetPixelID())
     # pred_array = sitk.GetArrayFromImage(resampled_pred)
     
-    all_results[ind, :] = each_cases_metric(gt_array, pred_array, gt_spacing)
-  
-  for ind, case in (enumerate(sorted(os.listdir(args.GT_dir)))):
-    result_dict['detailed'][case] = {'dice':all_results[ind, 0],
-                                    'surface dice':all_results[ind, 1],
-                                    "recall": all_results[ind,2]}
-
-  result_dict["mean"] = {"dice":np.mean(all_results[:,0]),
-                        "surface dice":np.mean(all_results[:,1]),
-                        "recall": np.mean(all_results[:,2])}
+    if args.continue_evaluation:
+      try:
+        with open(os.path.join(args.pred_dir,cal_filename)+'.json', 'r') as json_file:
+          result_dict = json.load(json_file)
+      except:
+          pass
+    if case not in result_dict['detailed'].keys():
+      all_results[ind, :] = each_cases_metric(gt_array, pred_array, gt_spacing)
+      result_dict['detailed'][case] = {
+        'dice':all_results[ind, 0],
+        'surface dice':all_results[ind, 1],
+        "recall": all_results[ind,2]}
+    
+  result_dict["mean"] = {
+    "dice":np.mean(all_results[:,0]),
+    "surface dice":np.mean(all_results[:,1]),
+    "recall": np.mean(all_results[:,2])}
 
   with open(os.path.join(args.pred_dir,cal_filename)+'.json', 'w') as json_file:
       json.dump(result_dict, json_file, indent=4)
@@ -642,18 +659,13 @@ def main():
     parser.add_argument("--GT_dir", default="/media/ps/passport2/ltc/nnUNetv2/nnUNet_raw/Dataset101_COVID/labelsTs",required=False)
     parser.add_argument('-p', '--pred_dir', help="pred_exp_name",
                         default="/media/ps/passport2/ltc/nnUNetv2/nnUNet_outputs/WORD/3d_lowres/fold2/6_4_4_patch96_128_128_step0.5_chkfinal_down1.0_1.0_1.0/stage_2/save_stage2_roi_th_0.5_level_sample_8.0_16.0_16.0_patch_64_192_160_center_canvas_64_192_160_shuffle_False_nms_0.5_prior_False_expand0_itc_0.0_pix_0.0_child_nmm_0.35_max/", required=False)
-    parser.add_argument('--mode',type=str,default='word')
+    parser.add_argument('--continue_evaluation', action='store_true', default=False)
+    parser.add_argument('--mode',type=str,default='covid')
     
     args = parser.parse_args()
     # evaluation_test(args)
 
-    try:       
-      for ind, case in (enumerate(sorted(os.listdir(args.GT_dir)))):
-        pred_itk = sitk.ReadImage(os.path.join(args.pred_dir,case))
-      evaluation(args)
-    except:
-      print(f"prediction not done, trying to evaluate study_0260,study_0293,study_0301,study_0304 only!")
-      evaluation_list(args,id=["study_0260.nii.gz","study_0293.nii.gz","study_0301.nii.gz","study_0304.nii.gz"])
+    evaluation(args)
 
     '''
     plt.imsave("gt.jpg",gt_array[100,:,:])

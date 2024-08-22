@@ -6,7 +6,7 @@ from copy import deepcopy
 from time import sleep
 from typing import Tuple, Union, List, Optional
 import json
-# os.environ['CUDA_VISIBLE_DEVICES'] = "3"
+
 import numpy as np
 import torch
 from acvl_utils.cropping_and_padding.padding import pad_nd_image
@@ -950,7 +950,7 @@ def predict_entry_point():
 
 
 if __name__ == '__main__':
-    
+    # os.environ['CUDA_VISIBLE_DEVICES'] = "2"
     predict_entry_point()
     
     # predict a bunch of files
