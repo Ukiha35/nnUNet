@@ -4,6 +4,7 @@ from typing import Union, List
 
 import numpy as np
 import torch
+import json
 from acvl_utils.cropping_and_padding.bounding_boxes import bounding_box_to_slice
 from batchgenerators.utilities.file_and_folder_operations import load_json, isfile, save_pickle
 
@@ -72,7 +73,8 @@ def export_prediction_from_logits(predicted_array_or_file: Union[np.ndarray, tor
                                   configuration_manager: ConfigurationManager,
                                   plans_manager: PlansManager,
                                   dataset_json_dict_or_file: Union[dict, str], output_file_truncated: str,
-                                  save_probabilities: bool = False):
+                                  save_probabilities: bool = False,
+                                  prediction_time: float = 0.0):
     # if isinstance(predicted_array_or_file, str):
     #     tmp = deepcopy(predicted_array_or_file)
     #     if predicted_array_or_file.endswith('.npy'):
@@ -101,6 +103,20 @@ def export_prediction_from_logits(predicted_array_or_file: Union[np.ndarray, tor
         segmentation_final = ret
         del ret
 
+    log_dir = os.path.join(os.path.dirname(output_file_truncated),'prediction_time.json')
+    if os.path.exists(log_dir):
+        with open(log_dir, 'r') as f:
+            time_log = json.load(f)
+    else:
+        time_log = {'detailed': {},
+                    'sum': 0.0}
+    
+    time_log['detailed'][output_file_truncated + dataset_json_dict_or_file['file_ending']] = prediction_time
+    time_log['sum'] = np.array([i for i in time_log['detailed'].values()]).sum()
+
+    with open(log_dir, 'w') as f:
+        json.dump(time_log, f, indent=4)
+            
     rw = plans_manager.image_reader_writer_class()
     rw.write_seg(segmentation_final, output_file_truncated + dataset_json_dict_or_file['file_ending'],
                  properties_dict)

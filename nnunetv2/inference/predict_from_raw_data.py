@@ -437,7 +437,7 @@ class nnUNetPredictor(object):
                         export_pool.starmap_async(
                             export_prediction_from_logits,
                             ((prediction, properties, self.configuration_manager, self.plans_manager,
-                              self.dataset_json, ofile, save_probabilities),)
+                              self.dataset_json, ofile, save_probabilities, predict_time),)
                         )
                     )
                 else:
@@ -926,7 +926,7 @@ def predict_entry_point():
                                  num_parts=args.num_parts,
                                  part_id=args.part_id)
     
-    save_json(predict_time, join(args.o, 'prediction_time.txt'))
+    # save_json(predict_time, join(args.o, 'prediction_time.txt'))
         
     
     # r = predict_from_raw_data(args.i,

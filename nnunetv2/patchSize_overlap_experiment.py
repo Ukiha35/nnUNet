@@ -54,6 +54,8 @@ def main():
     parser.add_argument("--downsample", type=float, nargs='+', default=[1,1,1], required=False)
     parser.add_argument("--mode", type=str, default='normal', help='normal,fafb')
     parser.add_argument("--disable_mirror", action='store_true', required=False, default=False, help='disable mirror')
+    parser.add_argument("--num_parts", type=int, default=1)
+    parser.add_argument("--part_id", type=int, default=0)
     args = parser.parse_args()
     
     assert args.datasetnum in dataset_dict
@@ -143,7 +145,7 @@ def main():
         tta = ''
     
     
-    command_predict = f"CUDA_VISIBLE_DEVICES={args.cuda_num}  nnUNetv2_predict {save_prob} {prev_output} {overwrite} -chk {args.chk} --continue_prediction -i {input_dir} -o {os.path.join(output_dir,output_folder)} -d {args.datasetnum} -c {args.config} -f {args.fold} -step_size {args.step} {tta}"
+    command_predict = f"CUDA_VISIBLE_DEVICES={args.cuda_num}  nnUNetv2_predict {save_prob} {prev_output} {overwrite} -chk {args.chk} --continue_prediction -i {input_dir} -o {os.path.join(output_dir,output_folder)} -d {args.datasetnum} -c {args.config} -f {args.fold} -step_size {args.step} {tta} -num_parts {args.num_parts} -part_id {args.part_id}"
     os.system(command_predict)
 
     os.remove(plan_file)
