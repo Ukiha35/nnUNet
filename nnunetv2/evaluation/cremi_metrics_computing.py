@@ -33,6 +33,8 @@ class Clefts:
         self.test_clefts_edt = ndimage.distance_transform_edt(self.test_clefts_mask, sampling=np.flip(test.GetSpacing()))
         self.truth_clefts_edt = ndimage.distance_transform_edt(self.truth_clefts_mask, sampling=np.flip(test.GetSpacing()))
 
+        self.all_zero = False
+        
     def count_false_positives(self, threshold = 200):
         # distance to gt_foreground > 200 is gt_negative
         mask1 = np.invert(self.test_clefts_mask)
@@ -48,7 +50,14 @@ class Clefts:
         return false_negatives.size
 
     def acc_false_positives(self):
-        
+        if self.all_false:
+            stats = {
+                'mean': 100,
+                'std': None,
+                'max': None,
+                'count': None,
+                'median': None}
+            return stats 
         mask = np.invert(self.test_clefts_mask)
         false_positives = self.truth_clefts_edt[mask]
         stats = {
@@ -60,7 +69,14 @@ class Clefts:
         return stats
 
     def acc_false_negatives(self):
-
+        if self.all_false:
+            stats = {
+                'mean': 100,
+                'std': None,
+                'max': None,
+                'count': None,
+                'median': None}
+            return stats 
         mask = np.invert(self.truth_clefts_mask)
         false_negatives = self.test_clefts_edt[mask]
         stats = {
@@ -71,7 +87,8 @@ class Clefts:
             'median': np.median(false_negatives)}
         return stats
 
-
+    def all_false_check(self):
+        self.all_false = (np.invert(self.test_clefts_mask).sum() == 0) or (np.invert(self.truth_clefts_mask).sum() == 0)
 
 cal_filename = "predictionsTs"
 
@@ -82,6 +99,8 @@ def evaluate_one(pred,gt_label,file_name):
 
     false_positive_count = clefts_evaluation.count_false_positives()
     false_negative_count = clefts_evaluation.count_false_negatives()
+
+    clefts_evaluation.all_false_check()
 
     false_positive_stats = clefts_evaluation.acc_false_positives()
     false_negative_stats = clefts_evaluation.acc_false_negatives()
