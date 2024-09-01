@@ -6,7 +6,7 @@ import json
 import SimpleITK as sitk
 from tqdm import tqdm
 
-dataset_dict = {61:'CREMI',62:'CREMI',100:'WORD',101:'COVID'}
+dataset_dict = {61:'CREMI_61',62:'CREMI',63:'FAFB',100:'WORD',101:'COVID'}
 
 
 def input_resample(folder_path, output_folder_path,downsample):
@@ -52,7 +52,6 @@ def main():
     parser.add_argument("--chk", default="checkpoint_final.pth", required=False)
     parser.add_argument("--config", default="2d", required=False)
     parser.add_argument("--downsample", type=float, nargs='+', default=[1,1,1], required=False)
-    parser.add_argument("--mode", type=str, default='normal', help='normal,fafb')
     parser.add_argument("--disable_mirror", action='store_true', required=False, default=False, help='disable mirror')
     parser.add_argument("--num_parts", type=int, default=1)
     parser.add_argument("--part_id", type=int, default=0)
@@ -69,10 +68,11 @@ def main():
     print(f"step: %s" % args.step)
     print(f"downsample: %s" % args.downsample)
     
-    ori_input_dir = f"/media/ps/passport2/ltc/nnUNetv2/nnUNet_raw/Dataset{args.datasetnum:03d}_{dataset_dict[args.datasetnum]}/imagesTs"
+    passport = 'passport1' if dataset_dict[args.datasetnum] == 'FAFB' else 'passport2'
+    ori_input_dir = f"/media/ps/{passport}/ltc/nnUNetv2/nnUNet_raw/Dataset{args.datasetnum:03d}_{dataset_dict[args.datasetnum]}/imagesTs"
     
     if args.config == "2d":
-        input_dir = f"/media/ps/passport2/ltc/nnUNetv2/nnUNet_raw/Dataset{args.datasetnum:03d}_{dataset_dict[args.datasetnum]}/imagesTs_{args.downsample[0]}_{args.downsample[1]}_{args.downsample[2]}"
+        input_dir = f"/media/ps/{passport}/ltc/nnUNetv2/nnUNet_raw/Dataset{args.datasetnum:03d}_{dataset_dict[args.datasetnum]}/imagesTs_{args.downsample[0]}_{args.downsample[1]}_{args.downsample[2]}"
         if not os.path.exists(input_dir):
             print("creating resampled input directory...")
             input_resample(ori_input_dir,input_dir,args.downsample)
@@ -81,16 +81,12 @@ def main():
     else:
         input_dir = ori_input_dir
 
-    output_dir = f"/media/ps/passport2/ltc/nnUNetv2/nnUNet_outputs/{dataset_dict[args.datasetnum]}"
+    output_dir = f"/media/ps/{passport}/ltc/nnUNetv2/nnUNet_outputs/{dataset_dict[args.datasetnum]}"
 
-    if args.mode == 'fafb':
-        input_dir = f"/media/ps/passport1/ltc/nnUNetv2/nnUNet_raw/Dataset{args.datasetnum:03d}_{dataset_dict[args.datasetnum]}/imagesTs_fafb"
-        output_dir = f"/media/ps/passport1/ltc/nnUNetv2/nnUNet_outputs/fafb_{dataset_dict[args.datasetnum]}"
-        
     print("creating settings...")
     
     # 生成settings
-    settings_dir = f"/media/ps/passport2/ltc/nnUNetv2/nnUNet_results/Dataset{args.datasetnum:03d}_{dataset_dict[args.datasetnum]}"
+    settings_dir = f"/media/ps/{passport}/ltc/nnUNetv2/nnUNet_results/Dataset{args.datasetnum:03d}_{dataset_dict[args.datasetnum]}"
     
     ori_plan_file = os.path.join(settings_dir,f"nnUNetTrainer__nnUNetPlans__{args.config}",f"plans_ori.json")
     plan_file = os.path.join(settings_dir,f"nnUNetTrainer__nnUNetPlans__{args.config}",f"plans.json")
@@ -154,8 +150,7 @@ def main():
     print('evaluating...')
     
     # nnUNet_WORDEvaluation 命令
-    mode = "--mode fafb" if args.mode == 'fafb' else ''
-    command_evaluation = f"nnUNetv2_{dataset_dict[args.datasetnum]}Evaluation -p {os.path.join(output_dir,output_folder)} {mode}"
+    command_evaluation = f"nnUNetv2_{dataset_dict[args.datasetnum]}Evaluation -p {os.path.join(output_dir,output_folder)}"
         
     os.system(command_evaluation)
 

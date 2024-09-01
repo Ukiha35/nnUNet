@@ -80,6 +80,8 @@ nnUNetv2_evaluate_simple = "nnunetv2.evaluation.evaluate_predictions:evaluate_si
 nnUNetv2_convert_MSD_dataset = "nnunetv2.dataset_conversion.convert_MSD_dataset:entry_point"
 nnUNetv2_WORDEvaluation = "nnunetv2.evaluation.word_metrics_computing:main"
 nnUNetv2_CREMIEvaluation = "nnunetv2.evaluation.cremi_metrics_computing:main"
+nnUNetv2_CREMI_61Evaluation = "nnunetv2.evaluation.cremi_61_metrics_computing:main"
+nnUNetv2_FAFBEvaluation = "nnunetv2.evaluation.fafb_metrics_computing:main"
 nnUNetv2_COVIDEvaluation = "nnunetv2.evaluation.covid_metrics_computing:main"
 nnUNetv2_patchSize_overlap_experiment = "nnunetv2.patchSize_overlap_experiment:main"
 

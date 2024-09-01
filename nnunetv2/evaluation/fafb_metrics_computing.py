@@ -136,8 +136,8 @@ def evaluate_one_and_save(pred,gt_label,file_name,pred_dir):
         
 def evaluation(pred_dir,c,num_workers):
 
-    names = ['sample_a_test.nii.gz','sample_b_test.nii.gz','sample_c_test.nii.gz']
-    GT_dir="/media/ps/passport2/ltc/nnUNetv2/nnUNet_raw/Dataset062_CREMI/labelsTs"
+    GT_dir="/media/ps/passport1/ltc/nnUNetv2/nnUNet_raw/Dataset063_FAFB/labelsTs"
+    names = os.listdir(GT_dir)
     
     with multiprocessing.get_context("spawn").Pool(num_workers) as export_pool:
         tasks_record = []

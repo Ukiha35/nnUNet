@@ -660,7 +660,6 @@ def main():
     parser.add_argument('-p', '--pred_dir', help="pred_exp_name",
                         default="/media/ps/passport2/ltc/nnUNetv2/nnUNet_outputs/WORD/3d_lowres/fold2/6_4_4_patch96_128_128_step0.5_chkfinal_down1.0_1.0_1.0/stage_2/save_stage2_roi_th_0.5_level_sample_8.0_16.0_16.0_patch_64_192_160_center_canvas_64_192_160_shuffle_False_nms_0.5_prior_False_expand0_itc_0.0_pix_0.0_child_nmm_0.35_max/", required=False)
     parser.add_argument('--continue_evaluation', action='store_true', default=False)
-    parser.add_argument('--mode',type=str,default='covid')
     
     args = parser.parse_args()
     # evaluation_test(args)
