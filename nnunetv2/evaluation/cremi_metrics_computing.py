@@ -52,7 +52,7 @@ class Clefts:
         return false_negatives.size
 
     def acc_false_positives(self):
-        if self.all_false:
+        if self.all_false == 1:
             stats = {
                 'mean': 100,
                 'std': None,
@@ -60,6 +60,14 @@ class Clefts:
                 'count': None,
                 'median': None}
             return stats 
+        elif self.all_false == 2:
+            stats = {
+                'mean': 0,
+                'std': 0,
+                'max': 0,
+                'count': 0,
+                'median': 0}
+            return stats
         mask = np.invert(self.test_clefts_mask)
         false_positives = self.truth_clefts_edt[mask]
         stats = {
@@ -71,7 +79,7 @@ class Clefts:
         return stats
 
     def acc_false_negatives(self):
-        if self.all_false:
+        if self.all_false == 1:
             stats = {
                 'mean': 100,
                 'std': None,
@@ -79,6 +87,14 @@ class Clefts:
                 'count': None,
                 'median': None}
             return stats 
+        elif self.all_false == 2:
+            stats = {
+                'mean': 0,
+                'std': 0,
+                'max': 0,
+                'count': 0,
+                'median': 0}
+            return stats
         mask = np.invert(self.truth_clefts_mask)
         false_negatives = self.test_clefts_edt[mask]
         stats = {
@@ -90,7 +106,7 @@ class Clefts:
         return stats
 
     def all_false_check(self):
-        self.all_false = (np.invert(self.test_clefts_mask).sum() == 0) or (np.invert(self.truth_clefts_mask).sum() == 0)
+        self.all_false = int(np.invert(self.test_clefts_mask).sum() == 0) + int(np.invert(self.truth_clefts_mask).sum() == 0)
 
 cal_filename = "predictionsTs"
 
