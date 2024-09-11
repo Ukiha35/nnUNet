@@ -149,15 +149,18 @@ def evaluation(pred_dir,c,num_workers):
                 "detailed": {}}
             with open(os.path.join(pred_dir,cal_filename)+'.json', 'w') as json_file:
                 json.dump(result_dict, json_file, indent=4)
+        else:
+            with open(os.path.join(pred_dir,cal_filename)+'.json', 'r') as json_file:
+                result_dict = json.load(json_file)
 
         for name in sorted(names):
-            try:
-                gt_label = sitk.ReadImage(join(GT_dir, name))
-                pred = sitk.ReadImage(join(pred_dir, name))
-            except:
-                continue
-            
             if name not in result_dict['detailed'].keys():
+                try:
+                    pred = sitk.ReadImage(join(pred_dir, name))
+                    gt_label = sitk.ReadImage(join(GT_dir, name))
+                except:
+                    continue
+            
                 while len([r for r in tasks_record if not r.ready()]) >= num_workers:
                     time.sleep(0.1)  
                 r = export_pool.starmap_async(evaluate_one_and_save, ((pred,gt_label,name,pred_dir),))
@@ -177,8 +180,8 @@ def evaluation(pred_dir,c,num_workers):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('-p', '--pred_dir', help="pred_exp_name",default="/media/ps/passport2/ltc/nnUNetv2/nnUNet_outputs/CREMI/3d_lowres/fold2/patch32_160_160_step0.5_chkfinal_down1.0_1.0_1.0/stage_2/save_stage2_roi_th_0.001_level_sample_3.0_16.0_16.0_patch_12_128_128_center_canvas_12_128_128_shuffle_False_nms_0.75_prior_False_expand0_itc_4.0_pix_6.0_child_nmm_0.35_crop_12_128_128_max_fullres/", required=False)
-    parser.add_argument('--continue_evaluation', action='store_true', default=False)
+    parser.add_argument('-p', '--pred_dir', help="pred_exp_name",default="/media/ps/passport1/ltc/nnUNetv2/nnUNet_outputs/FAFB/3d_lowres/fold4/patch80_160_160_step0.5_chkfinal_down1.0_1.0_1.0/stage_2/save_stage2_roi_th_0.001_level_sample_3.0_16.0_16.0_patch_12_128_128_center_canvas_12_128_128_shuffle_False_nms_0.75_prior_False_expand0_itc_4.0_pix_6.0_child_nmm_0.35_crop_12_128_128_max_fullres/", required=False)
+    parser.add_argument('--continue_evaluation', action='store_true', default=True)
     parser.add_argument('--num_workers', type=int, default=5)
     
     args = parser.parse_args()

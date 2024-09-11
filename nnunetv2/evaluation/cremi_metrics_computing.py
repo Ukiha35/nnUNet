@@ -165,15 +165,18 @@ def evaluation(pred_dir,c,num_workers):
                 "detailed": {}}
             with open(os.path.join(pred_dir,cal_filename)+'.json', 'w') as json_file:
                 json.dump(result_dict, json_file, indent=4)
+        else:
+            with open(os.path.join(pred_dir,cal_filename)+'.json', 'r') as json_file:
+                result_dict = json.load(json_file)
 
         for name in sorted(names):
-            try:
-                gt_label = sitk.ReadImage(join(GT_dir, name))
-                pred = sitk.ReadImage(join(pred_dir, name))
-            except:
-                continue
-            
             if name not in result_dict['detailed'].keys():
+                try:
+                    pred = sitk.ReadImage(join(pred_dir, name))
+                    gt_label = sitk.ReadImage(join(GT_dir, name))
+                except:
+                    continue
+            
                 while len([r for r in tasks_record if not r.ready()]) >= num_workers:
                     time.sleep(0.1)  
                 r = export_pool.starmap_async(evaluate_one_and_save, ((pred,gt_label,name,pred_dir),))
